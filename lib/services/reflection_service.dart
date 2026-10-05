@@ -1,4 +1,4 @@
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 class ReflectionService {
   static const modelPath =
@@ -21,11 +21,11 @@ class ReflectionService {
 
   Future<void> init() async {
     if (_model != null) return;
-    await FlutterGemma.installModel(
+    await FlutterEdgeAi.installModel(
       modelType: ModelType.gemmaIt,
       fileType: ModelFileType.task,
     ).fromFile(modelPath).install();
-    _model = await FlutterGemma.getActiveModel(maxTokens: 1024);
+    _model = await FlutterEdgeAi.getActiveModel(maxTokens: 1024);
   }
 
     String _buildPrompt(String entry) => '''

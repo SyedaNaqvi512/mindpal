@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 class AiTestScreen extends StatefulWidget {
   const AiTestScreen({super.key});
@@ -22,12 +22,12 @@ class _AiTestScreenState extends State<AiTestScreen> {
     });
 
     try {
-      await FlutterGemma.installModel(
+      await FlutterEdgeAi.installModel(
         modelType: ModelType.gemmaIt,
         fileType: ModelFileType.task,
       ).fromFile(modelPath).install();
 
-      final model = await FlutterGemma.getActiveModel(maxTokens: 512);
+      final model = await FlutterEdgeAi.getActiveModel(maxTokens: 512);
       final session = await model.createSession();
 
       await session.addQueryChunk(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gemma/flutter_gemma.dart';
-import 'package:flutter_gemma_mediapipe/flutter_gemma_mediapipe.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
+import 'package:flutter_edge_ai_mediapipe/flutter_edge_ai_mediapipe.dart';
 
 import 'screens/journal_screen.dart';
 
@@ -9,7 +9,7 @@ Future<void> main() async {
 
   const token = String.fromEnvironment('HUGGINGFACE_TOKEN');
 
-  await FlutterGemma.initialize(
+  await FlutterEdgeAi.initialize(
     inferenceEngines: const [
       MediaPipeEngine(),
     ],

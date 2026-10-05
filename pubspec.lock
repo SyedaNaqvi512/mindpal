@@ -198,22 +198,22 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_gemma:
+  flutter_edge_ai:
     dependency: "direct main"
     description:
-      name: flutter_gemma
-      sha256: "71c96fc592b1ee785c17195ee8f9227383300c9c74ffaa9c5af41dd893530f7e"
+      name: flutter_edge_ai
+      sha256: "234d07c00ba09a678e94c5e20d104c9dce181c6c017d8b2bd39f5176f0f63cbf"
       url: "https://pub.dev"
     source: hosted
-    version: "1.11.4"
-  flutter_gemma_mediapipe:
+    version: "2.0.0"
+  flutter_edge_ai_mediapipe:
     dependency: "direct main"
     description:
-      name: flutter_gemma_mediapipe
-      sha256: "17d76e0820d59ea58dad4f1831ee7465231fd25db5e3a48ec47fab62c1b1e6dd"
+      name: flutter_edge_ai_mediapipe
+      sha256: "6d370090c1ce2a8c8b6a362d544301b1f094869a4f9dc9924c227a2bd2a02e8f"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.8"
+    version: "1.0.9"
   flutter_lints:
     dependency: "direct dev"
     description:

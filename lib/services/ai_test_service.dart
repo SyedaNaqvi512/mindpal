@@ -1,5 +1,5 @@
-import 'package:flutter_gemma/flutter_gemma.dart';
-import 'package:flutter_gemma_mediapipe/flutter_gemma_mediapipe.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
+import 'package:flutter_edge_ai_mediapipe/flutter_edge_ai_mediapipe.dart';
 
 class AiTestService {
   static bool _initialized = false;
@@ -9,7 +9,7 @@ class AiTestService {
 
     const token = String.fromEnvironment('HUGGINGFACE_TOKEN');
 
-    await FlutterGemma.initialize(
+    await FlutterEdgeAi.initialize(
       inferenceEngines: const [
         MediaPipeEngine(),
       ],
@@ -29,7 +29,7 @@ class AiTestService {
 
     onProgress('Starting Gemma model installation...');
 
-    await FlutterGemma.installModel(
+    await FlutterEdgeAi.installModel(
       modelType: ModelType.gemmaIt,
       fileType: ModelFileType.task,
     )
@@ -43,7 +43,7 @@ class AiTestService {
 
     onProgress('Model installed. Loading Gemma...');
 
-    final model = await FlutterGemma.getActiveModel(
+    final model = await FlutterEdgeAi.getActiveModel(
       maxTokens: 1024,
     );
 
