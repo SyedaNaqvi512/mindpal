@@ -1,10 +1,12 @@
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
-class ReflectionService {
+import 'reflection_engine.dart';
+
+class ReflectionService implements ReflectionEngine {
   static const modelPath =
       '/data/data/com.example.mindpal/files/gemma3-1b-it-int4.task';
 
-    static const _crisisWords = [
+  static const _crisisWords = [
     'suicide', 'suicidal', 'kill myself', 'end my life', 'want to die',
     'hurt myself', 'self-harm', 'self harm', 'no reason to live',
     "don't want to live", 'dont want to live', 'better off dead',
@@ -28,7 +30,7 @@ class ReflectionService {
     _model = await FlutterEdgeAi.getActiveModel(maxTokens: 1024);
   }
 
-    String _buildPrompt(String entry) => '''
+  String _buildPrompt(String entry) => '''
 You are a kind CBT reflection helper. You are not a therapist.
 Reply in exactly 3 lines, with no bold or markdown.
 The gentle question must challenge the thought by asking for evidence or another explanation. Do not ask about feelings.
@@ -42,6 +44,7 @@ Now do the same for this entry:
 $entry
 ''';
 
+  @override
   Future<String> reflect(String entry) async {
     await init();
     final session = await _model!.createSession();
@@ -49,7 +52,7 @@ $entry
       await session.addQueryChunk(
         Message.text(text: _buildPrompt(entry), isUser: true),
       );
-            final reply = await session.getResponse();
+      final reply = await session.getResponse();
       return reply.replaceAll('**', '').replaceAll('*', '').trim();
     } finally {
       await session.close();

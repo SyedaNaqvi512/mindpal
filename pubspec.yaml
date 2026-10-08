@@ -40,6 +40,7 @@ dependencies:
   file_picker: ^13.1.0
   flutter_edge_ai: ^2.0.0
   flutter_edge_ai_mediapipe: ^1.0.9
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
