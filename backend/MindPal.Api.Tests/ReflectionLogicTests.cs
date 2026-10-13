@@ -29,7 +29,7 @@ public class ReflectionLogicTests
     // ---- safety screening ----
     [Theory]
     [InlineData("I want to kill myself")]
-    [InlineData("I feel like I DON\u2019T WANT TO LIVE anymore")]
+    [InlineData("I feel like I DON’T WANT TO LIVE anymore")]
     [InlineData("thinking about self-harm")]
     public void Safety_HighRiskText_IsDetected(string text)
         => Assert.True(SafetyScreener.IsHighRisk(text));
@@ -61,7 +61,9 @@ public class ReflectionLogicTests
     [Fact]
     public void Parser_UnknownPattern_BecomesNone()
     {
-        var r = ReflectionParser.TryParse(Good.Replace("catastrophizing", "made_up_pattern"));
+        var r = ReflectionParser.TryParse(
+            Good.Replace("catastrophizing", "made_up_pattern"));
+
         Assert.Equal("none", r!.ThinkingPattern);
     }
 
@@ -72,4 +74,12 @@ public class ReflectionLogicTests
     [InlineData("""{"acknowledgement":"x"}""")]
     public void Parser_BadOutput_ReturnsNull(string json)
         => Assert.Null(ReflectionParser.TryParse(json));
+
+    // ---- usage limits ----
+    [Theory]
+    [InlineData(9, 29, false)]
+    [InlineData(10, 10, true)]    // 10 in the last hour
+    [InlineData(3, 30, true)]     // 30 in the last day
+    public void Limits_AreEnforced(int hour, int day, bool exceeded)
+        => Assert.Equal(exceeded, ReflectionLimits.IsExceeded(hour, day));
 }
