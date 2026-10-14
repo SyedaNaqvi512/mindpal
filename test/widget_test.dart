@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mindpal/screens/login_screen.dart';
+import 'package:mindpal/features/auth/screens/login_screen.dart';
 
 void main() {
   testWidgets('MindPal sign-in screen shows the title and sign-in form',

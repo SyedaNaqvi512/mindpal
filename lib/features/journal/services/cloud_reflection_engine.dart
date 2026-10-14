@@ -1,4 +1,4 @@
-import 'auth_service.dart';
+import '../../auth/services/auth_service.dart';
 import 'reflection_engine.dart';
 
 class CloudReflectionEngine implements ReflectionEngine {

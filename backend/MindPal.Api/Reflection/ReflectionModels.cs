@@ -1,12 +1,22 @@
+using System.Linq;
+using System.Text.Json.Serialization;
+
 namespace MindPal.Api.Reflection;
 
 public static class ThinkingPatterns
 {
     public static readonly string[] All =
     [
-        "all_or_nothing", "catastrophizing", "mind_reading", "overgeneralization",
-        "emotional_reasoning", "should_statements", "personalization", "labeling",
-        "mental_filter", "none"
+        "all_or_nothing",
+        "catastrophizing",
+        "mind_reading",
+        "overgeneralization",
+        "emotional_reasoning",
+        "should_statements",
+        "personalization",
+        "labeling",
+        "mental_filter",
+        "none"
     ];
 }
 
@@ -17,7 +27,12 @@ public record ReflectionResult(
     string BalancedThought,
     string NextStep)
 {
-    // Plain-text version, so the current app keeps working
+    // Identifies the model that produced this answer.
+    // Used for server-side logging and excluded from JSON responses.
+    [JsonIgnore]
+    public string? ModelUsed { get; init; }
+
+    // Plain-text version, so the current app keeps working.
     public string ToText() =>
         $"{Acknowledgement}\n\n" +
         string.Join("\n", Questions.Select(q => "- " + q)) + "\n\n" +

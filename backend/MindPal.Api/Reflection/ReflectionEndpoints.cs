@@ -11,18 +11,36 @@ public static class ReflectionEndpoints
 {
     public static void MapReflection(this IEndpointRouteBuilder app) =>
         app.MapPost("/reflect", Reflect)
-           .RequireAuthorization().RequireRateLimiting("reflect").WithTags("Reflection");
+           .RequireAuthorization()
+           .RequireRateLimiting("reflect")
+           .WithTags("Reflection");
 
-    private static IResult Problem(int status, string code, string title, string? detail = null,
+    private static IResult Problem(
+        int status,
+        string code,
+        string title,
+        string? detail = null,
         Dictionary<string, string[]>? errors = null)
     {
         var ext = new Dictionary<string, object?> { ["code"] = code };
-        if (errors is not null) ext["errors"] = errors;
-        return Results.Problem(statusCode: status, title: title, detail: detail, extensions: ext);
+
+        if (errors is not null)
+            ext["errors"] = errors;
+
+        return Results.Problem(
+            statusCode: status,
+            title: title,
+            detail: detail,
+            extensions: ext);
     }
 
-    private static async Task<AiUsageLog> LogUsage(MindPalDbContext db, Guid userId, string model,
-        long ms, string status, CancellationToken ct)
+    private static async Task<AiUsageLog> LogUsage(
+        MindPalDbContext db,
+        Guid userId,
+        string model,
+        long ms,
+        string status,
+        CancellationToken ct)
     {
         var log = new AiUsageLog
         {
@@ -32,52 +50,110 @@ public static class ReflectionEndpoints
             DurationMs = (int)Math.Min(ms, int.MaxValue),
             Status = status
         };
+
         db.AiUsageLogs.Add(log);
-        await db.SaveChangesAsync(ct);   // only metadata is stored, never journal text
+
+        // Store metadata only, never journal text.
+        await db.SaveChangesAsync(ct);
+
         return log;
     }
 
-    private static async Task<IResult> Reflect(ReflectRequest req, ClaimsPrincipal principal,
-        MindPalDbContext db, IReflectionEngine engine, IConfiguration config, CancellationToken ct)
+    private static async Task<IResult> Reflect(
+        ReflectRequest req,
+        ClaimsPrincipal principal,
+        MindPalDbContext db,
+        IReflectionEngine engine,
+        IConfiguration config,
+        CancellationToken ct)
     {
         // 1. Input validation
         var error = ReflectionInput.Validate(req.Text, out var text);
+
         if (error is not null)
-            return Problem(400, "validation_failed", "Validation failed", error,
-                new Dictionary<string, string[]> { ["text"] = [error] });
+        {
+            return Problem(
+                400,
+                "validation_failed",
+                "Validation failed",
+                error,
+                new Dictionary<string, string[]>
+                {
+                    ["text"] = [error]
+                });
+        }
 
         if (!Guid.TryParse(principal.FindFirstValue("sub"), out var userId))
             return Problem(401, "invalid_token", "Token is invalid");
 
-        // 2. Safety screening: high-risk text is never sent to the AI service
+        // 2. Safety screening: high-risk text is never sent to the AI service.
         if (SafetyScreener.IsHighRisk(text))
         {
-            db.SafetyEvents.Add(new SafetyEvent { CreatedAt = DateTime.UtcNow });   // anonymous count
+            db.SafetyEvents.Add(
+                new SafetyEvent { CreatedAt = DateTime.UtcNow });
+
             await db.SaveChangesAsync(ct);
-            return Results.Ok(new { safety = true, reflection = SafetyScreener.SupportMessage });
+
+            return Results.Ok(new
+            {
+                safety = true,
+                reflection = SafetyScreener.SupportMessage
+            });
         }
 
-        // 3. Per-user AI limits (10 per hour, 30 per rolling day)
+        // 3. Per-user limits.
+        // Only successful reflections count toward the 10/hour and 30/day quota.
+        // Failed attempts do not consume this allowance.
+        // A separate cap on all non-rate-limited attempts blocks abuse.
         var model = config["Gemini:Model"] ?? "unknown";
         var now = DateTime.UtcNow;
+
         var recent = db.AiUsageLogs.Where(l =>
-            l.UserId == userId && l.Status != "rate_limited" && l.CreatedAt >= now.AddDays(-1));
-        var inDay = await recent.CountAsync(ct);
-        var inHour = await recent.CountAsync(l => l.CreatedAt >= now.AddHours(-1), ct);
-        if (ReflectionLimits.IsExceeded(inHour, inDay))
+            l.UserId == userId &&
+            l.Status != "rate_limited" &&
+            l.CreatedAt >= now.AddDays(-1));
+
+        var successes = recent.Where(l => l.Status == "success");
+
+        var inDay = await successes.CountAsync(ct);
+
+        var inHour = await successes.CountAsync(
+            l => l.CreatedAt >= now.AddHours(-1),
+            ct);
+
+        var attemptsInHour = await recent.CountAsync(
+            l => l.CreatedAt >= now.AddHours(-1),
+            ct);
+
+        if (ReflectionLimits.IsExceeded(inHour, inDay) ||
+            ReflectionLimits.IsAttemptCapExceeded(attemptsInHour))
         {
             await LogUsage(db, userId, model, 0, "rate_limited", ct);
-            return Problem(429, "ai_rate_limited", "Reflection limit reached",
+
+            return Problem(
+                429,
+                "ai_rate_limited",
+                "Reflection limit reached",
                 $"You can request up to {ReflectionLimits.MaxPerHour} reflections per hour and {ReflectionLimits.MaxPerDay} per day. Please try again later.");
         }
 
-        // 4. Core logic: ask the engine, validate its answer, record usage
+        // 4. Ask the AI engine, validate its answer, and record usage.
         var sw = Stopwatch.StartNew();
+
         try
         {
             var result = await engine.ReflectAsync(text, ct);
+
             sw.Stop();
-            var log = await LogUsage(db, userId, model, sw.ElapsedMilliseconds, "success", ct);
+
+            var log = await LogUsage(
+                db,
+                userId,
+                result.ModelUsed ?? model,
+                sw.ElapsedMilliseconds,
+                "success",
+                ct);
+
             return Results.Ok(new
             {
                 reflectionId = log.Id,
@@ -89,10 +165,26 @@ public static class ReflectionEndpoints
         catch (ReflectionException ex)
         {
             sw.Stop();
-            await LogUsage(db, userId, model, sw.ElapsedMilliseconds, ex.Status, ct);
+
+            await LogUsage(
+                db,
+                userId,
+                model,
+                sw.ElapsedMilliseconds,
+                ex.Status,
+                ct);
+
             return ex.Status == "timeout"
-                ? Problem(504, "ai_timeout", "The AI service took too long", "Please try again.")
-                : Problem(502, "ai_unavailable", "The AI service is unavailable", "Please try again.");
+                ? Problem(
+                    504,
+                    "ai_timeout",
+                    "The AI service took too long",
+                    "Please try again.")
+                : Problem(
+                    502,
+                    "ai_unavailable",
+                    "The AI service is unavailable",
+                    "Please try again.");
         }
     }
 }
