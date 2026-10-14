@@ -1,43 +1,35 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
+import 'auth_service.dart';
 import 'reflection_engine.dart';
 
 class CloudReflectionEngine implements ReflectionEngine {
-  CloudReflectionEngine({String? baseUrl, http.Client? client})
-      : _baseUrl = baseUrl ??
-            const String.fromEnvironment(
-              'API_BASE_URL',
-              defaultValue: 'http://10.0.2.2:5141',
-            ),
-        _client = client ?? http.Client();
-
-  final String _baseUrl;
-  final http.Client _client;
+  CloudReflectionEngine();
 
   @override
-  Future<String> reflect(String entry) async {
+  Future<ReflectionResult> reflect(String entry) async {
     try {
-      final response = await _client
-          .post(
-            Uri.parse('$_baseUrl/reflect'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'text': entry}),
-          )
+      final response = await AuthService.instance
+          .authorizedPost('/reflect', {'text': entry})
           .timeout(const Duration(seconds: 60));
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final data = decodeJson(response.body);
 
       if (response.statusCode == 200) {
-                return (data['reflection'] as String)
+        final text = (data['reflection'] as String)
             .replaceAll('**', '')
             .replaceAll('*', '')
             .trim();
+        if (data['safety'] == true) {
+          return ReflectionResult(text: text, safety: true);
+        }
+        final structured = data['structured'];
+        return ReflectionResult(
+          text: text,
+          pattern: structured is Map ? structured['thinkingPattern'] as String? : null,
+          serverId: data['reflectionId'] as String?,
+        );
       }
-      throw ReflectionException(
-        (data['error'] as String?) ?? 'Something went wrong. Please try again.',
-      );
+      throw ReflectionException(problemMessage(data));
+    } on SessionExpiredException {
+      rethrow;
     } on ReflectionException {
       rethrow;
     } catch (_) {
