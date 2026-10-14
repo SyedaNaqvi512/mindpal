@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../services/auth_service.dart';
+import '../../auth/services/auth_service.dart';
 import '../services/cloud_reflection_engine.dart';
-import '../services/database_service.dart';
+import '../../../core/database/database_service.dart';
 import '../services/reflection_engine.dart';
 import '../services/reflection_service.dart';
 

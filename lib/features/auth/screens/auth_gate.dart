@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
-import 'journal_screen.dart';
+import '../../journal/screens/journal_screen.dart';
 import 'login_screen.dart';
 
 /// Shows the journal when signed in, and the login screen otherwise.
