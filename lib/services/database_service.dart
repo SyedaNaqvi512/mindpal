@@ -6,7 +6,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 
 class DatabaseService {
   static const String _databaseName = 'mindpal.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
   static const String _databaseKeyName = 'mindpal_database_key';
 
   static final FlutterSecureStorage _secureStorage =
@@ -43,8 +43,32 @@ class DatabaseService {
             created_at TEXT NOT NULL
           )
         ''');
+
+        await _createReflectionsTable(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await _createReflectionsTable(db);
+        }
       },
     );
+  }
+
+  /// Creates the reflections table.
+  static Future<void> _createReflectionsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE reflections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entry_id INTEGER NOT NULL,
+        reflection_text TEXT NOT NULL,
+        thinking_pattern TEXT,
+        server_reflection_id TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (entry_id)
+          REFERENCES journal_entries (id)
+          ON DELETE CASCADE
+      )
+    ''');
   }
 
   /// Gets the database key from secure storage.
@@ -89,6 +113,40 @@ class DatabaseService {
         'created_at': DateTime.now().toIso8601String(),
       },
     );
+  }
+
+  /// Inserts a reflection linked to a journal entry.
+  static Future<int> insertReflection({
+    required int entryId,
+    required String text,
+    String? thinkingPattern,
+    String? serverReflectionId,
+  }) async {
+    final db = await database;
+
+    return db.insert('reflections', {
+      'entry_id': entryId,
+      'reflection_text': text,
+      'thinking_pattern': thinkingPattern,
+      'server_reflection_id': serverReflectionId,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Gets recent journal entries with their associated reflections.
+  static Future<List<Map<String, dynamic>>> getRecentEntries({
+    int limit = 5,
+  }) async {
+    final db = await database;
+
+    return db.rawQuery('''
+      SELECT e.id, e.content, e.mood, e.created_at,
+             r.thinking_pattern, r.reflection_text
+      FROM journal_entries e
+      LEFT JOIN reflections r ON r.entry_id = e.id
+      ORDER BY e.created_at DESC
+      LIMIT ?
+    ''', [limit]);
   }
 
   /// Reads all journal entries from the encrypted database.

@@ -45,7 +45,7 @@ $entry
 ''';
 
   @override
-  Future<String> reflect(String entry) async {
+   Future<ReflectionResult> reflect(String entry) async {
     await init();
     final session = await _model!.createSession();
     try {
@@ -53,7 +53,9 @@ $entry
         Message.text(text: _buildPrompt(entry), isUser: true),
       );
       final reply = await session.getResponse();
-      return reply.replaceAll('**', '').replaceAll('*', '').trim();
+            return ReflectionResult(
+        text: reply.replaceAll('**', '').replaceAll('*', '').trim(),
+      );
     } finally {
       await session.close();
     }
