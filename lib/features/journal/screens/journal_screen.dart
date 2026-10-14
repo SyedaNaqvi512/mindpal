@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../auth/services/auth_service.dart';
-import '../services/cloud_reflection_engine.dart';
 import '../../../core/database/database_service.dart';
+import '../../../core/theme/theme_switcher_button.dart';
+import '../services/cloud_reflection_engine.dart';
 import '../services/reflection_engine.dart';
 import '../services/reflection_service.dart';
 
@@ -10,6 +11,7 @@ enum ReflectionMode { cloud, onDevice }
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key, required this.onSignedOut});
+
   final VoidCallback onSignedOut;
 
   @override
@@ -70,10 +72,12 @@ class _JournalScreenState extends State<JournalScreen> {
     try {
       final reply = await _engine.reflect(text);
       if (!mounted) return;
+
       if (reply.safety) {
         setState(() => _crisis = true);
         return;
       }
+
       setState(() => _result = reply.text);
       await _save(text, reply);
     } on SessionExpiredException {
@@ -85,28 +89,41 @@ class _JournalScreenState extends State<JournalScreen> {
       if (!mounted) return;
       setState(() => _result = 'Something went wrong: $e');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   // The journal text stays on the phone, in the encrypted database.
   Future<void> _save(String text, ReflectionResult reply) async {
     try {
-      final entryId =
-          await DatabaseService.insertJournalEntry(content: text, mood: _mood);
+      final entryId = await DatabaseService.insertJournalEntry(
+        content: text,
+        mood: _mood,
+      );
+
       await DatabaseService.insertReflection(
         entryId: entryId,
         text: reply.text,
         thinkingPattern: reply.pattern,
         serverReflectionId: reply.serverId,
       );
+
       if (!mounted) return;
+
       _controller.clear();
       await _loadRecent();
-      if (mounted) setState(() => _notice = 'Saved on this phone.');
+
+      if (mounted) {
+        setState(() => _notice = 'Saved on this phone.');
+      }
     } catch (_) {
       if (mounted) {
-        setState(() => _notice = 'The reflection could not be saved on this phone.');
+        setState(
+          () => _notice =
+              'The reflection could not be saved on this phone.',
+        );
       }
     }
   }
@@ -133,6 +150,7 @@ class _JournalScreenState extends State<JournalScreen> {
       appBar: AppBar(
         title: const Text('MindPal'),
         actions: [
+          const ThemeSwitcherButton(),
           IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
@@ -155,8 +173,10 @@ class _JournalScreenState extends State<JournalScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text('How do you feel? (1 = very low, 5 = very good)',
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const Text(
+              'How do you feel? (1 = very low, 5 = very good)',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             Wrap(
               spacing: 8,
               children: [
@@ -164,7 +184,9 @@ class _JournalScreenState extends State<JournalScreen> {
                   ChoiceChip(
                     label: Text('$m'),
                     selected: _mood == m,
-                    onSelected: _loading ? null : (_) => setState(() => _mood = m),
+                    onSelected: _loading
+                        ? null
+                        : (_) => setState(() => _mood = m),
                   ),
               ],
             ),
@@ -185,7 +207,8 @@ class _JournalScreenState extends State<JournalScreen> {
               selected: {_mode},
               onSelectionChanged: _loading
                   ? null
-                  : (selection) => setState(() => _mode = selection.first),
+                  : (selection) =>
+                      setState(() => _mode = selection.first),
             ),
             const SizedBox(height: 8),
             Text(
@@ -215,11 +238,12 @@ class _JournalScreenState extends State<JournalScreen> {
                 child: const Padding(
                   padding: EdgeInsets.all(16),
                   child: Text(
-                    'It sounds like you are going through something very painful. '
-                    'You deserve support from a real person. Please contact your '
-                    'local emergency number or a mental health service, or reach out to '
-                    'someone you trust right now.\n\n'
-                    'Punjab Institute of Mental Health, Lahore: +92 42 99203776',
+                    'It sounds like you are going through something very '
+                    'painful. You deserve support from a real person. Please '
+                    'contact your local emergency number or a mental health '
+                    'service, or reach out to someone you trust right now.\n\n'
+                    'Punjab Institute of Mental Health, Lahore: '
+                    '+92 42 99203776',
                   ),
                 ),
               ),
@@ -233,18 +257,28 @@ class _JournalScreenState extends State<JournalScreen> {
             if (_notice != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(_notice!,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                child: Text(
+                  _notice!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
               ),
             if (_recent.isNotEmpty) ...[
               const SizedBox(height: 24),
-              Text('Recent entries',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Recent entries',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               for (final row in _recent)
                 Card(
                   child: ListTile(
-                    title: Text(row['content'] as String,
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    title: Text(
+                      row['content'] as String,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     subtitle: Text(
                       'Mood ${row['mood']} - '
                       '${(row['created_at'] as String).substring(0, 10)}'
