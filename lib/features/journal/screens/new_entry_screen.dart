@@ -5,6 +5,7 @@ import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
 import '../../auth/services/auth_service.dart';
 import '../services/cloud_reflection_engine.dart';
+import '../services/quick_reflection_engine.dart';
 import '../services/reflection_engine.dart';
 import '../services/reflection_service.dart';
 
@@ -29,6 +30,8 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   String? _notice;
   bool _crisis = false;
   bool _loading = false;
+  bool _canQuick = false; // cloud failed: offer the offline Quick reflection
+  bool _quickUsed = false;
   int _mood = 3;
 
   ReflectionEngine get _engine =>
@@ -53,6 +56,8 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
       _loading = true;
       _result = null;
       _notice = null;
+      _canQuick = false;
+      _quickUsed = false;
     });
 
     try {
@@ -72,15 +77,48 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
       widget.onSignedOut();
     } on ReflectionException catch (e) {
       if (!mounted) return;
-      setState(() => _result = e.message);
+      setState(() {
+        _result = e.message;
+        _canQuick = _mode == ReflectionMode.cloud;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _result = 'Something went wrong: $e');
+      setState(() {
+        _result = 'Something went wrong: $e';
+        _canQuick = _mode == ReflectionMode.cloud;
+      });
     } finally {
       if (mounted) {
         setState(() => _loading = false);
       }
     }
+  }
+
+
+  // Offline fallback: rule-based, no AI. Always labelled as basic.
+  Future<void> _quick() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    if (ReflectionService.looksLikeCrisis(text)) {
+      setState(() {
+        _crisis = true;
+        _result = null;
+        _canQuick = false;
+      });
+      return;
+    }
+
+    final reply = await QuickReflectionEngine().reflect(text);
+    if (!mounted) return;
+    setState(() {
+      _crisis = false;
+      _result = reply.text;
+      _quickUsed = true;
+      _canQuick = false;
+      _notice = null;
+    });
+    await _save(text, reply);
   }
 
   // The journal text stays on the phone, in the encrypted database.
@@ -216,6 +254,15 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                   ),
                 ),
               ),
+            if (_quickUsed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Quick reflection: a basic, rule-based reply made on this '
+                  'phone. It is not AI and not therapy.',
+                  style: hint,
+                ),
+              ),
             if (_result != null)
               Card(
                 child: Padding(
@@ -223,6 +270,19 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                   child: SelectableText(_result!),
                 ),
               ),
+            if (_canQuick) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _quick,
+                icon: const Icon(Symbols.bolt_rounded),
+                label: const Text('Get a quick reflection instead'),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Basic, works offline, and your entry stays on this phone.',
+                style: hint,
+              ),
+            ],
             if (_notice != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
