@@ -5,6 +5,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../auth/services/auth_service.dart';
+import '../../consent/services/consent_service.dart';
+import '../../consent/widgets/consent_sheet.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key, required this.onSignedOut});
@@ -12,6 +14,7 @@ class SettingsScreen extends ConsumerWidget {
   final VoidCallback onSignedOut;
 
   Future<void> _signOut() async {
+    ConsentService.instance.clear();
     await AuthService.instance.logout();
     onSignedOut();
   }
@@ -62,6 +65,10 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => controller.select(o.choice),
             ),
           const SizedBox(height: 24),
+          Text('Privacy', style: text.titleMedium),
+          const SizedBox(height: 8),
+          const _AiConsentTile(),
+          const SizedBox(height: 24),
           Text('Account', style: text.titleMedium),
           const SizedBox(height: 8),
           Card(
@@ -73,6 +80,90 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AiConsentTile extends StatefulWidget {
+  const _AiConsentTile();
+
+  @override
+  State<_AiConsentTile> createState() => _AiConsentTileState();
+}
+
+class _AiConsentTileState extends State<_AiConsentTile> {
+  bool? _granted; // null = loading
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final g = await ConsentService.instance.isGranted(refresh: true);
+      if (!mounted) return;
+      setState(() => _granted = g);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    }
+  }
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _toggle(bool on) async {
+    setState(() => _busy = true);
+    try {
+      if (on) {
+        final agreed = await showConsentSheet(context);
+        if (agreed) {
+          await ConsentService.instance.grant();
+          if (mounted) setState(() => _granted = true);
+        }
+      } else {
+        await ConsentService.instance.revoke();
+        if (mounted) setState(() => _granted = false);
+      }
+    } on AuthException catch (e) {
+      if (mounted) _snack(e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+
+    return Card(
+      child: _error != null
+          ? ListTile(
+              leading: const Icon(Symbols.refresh_rounded),
+              title: const Text('AI reflections'),
+              subtitle: Text('$_error Tap to try again.'),
+              onTap: _load,
+            )
+          : SwitchListTile(
+              secondary: const Icon(Symbols.cloud_rounded),
+              title: const Text('AI reflections (cloud)'),
+              subtitle: Text(
+                _granted == true
+                    ? 'Entries you reflect on are sent securely to an AI '
+                        'service. Turn off to withdraw permission.'
+                    : 'Off. Entries are not sent anywhere.',
+                style: TextStyle(color: muted),
+              ),
+              value: _granted ?? false,
+              onChanged: (_granted == null || _busy) ? null : _toggle,
+            ),
     );
   }
 }

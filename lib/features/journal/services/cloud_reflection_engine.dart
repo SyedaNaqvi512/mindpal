@@ -27,6 +27,9 @@ class CloudReflectionEngine implements ReflectionEngine {
           serverId: data['reflectionId'] as String?,
         );
       }
+      if (response.statusCode == 403 && data['code'] == 'consent_required') {
+        throw ConsentRequiredException();
+      }
       throw ReflectionException(problemMessage(data));
     } on SessionExpiredException {
       rethrow;

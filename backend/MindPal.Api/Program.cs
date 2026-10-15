@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MindPal.Api.Auth;
+using MindPal.Api.Consents;
 using MindPal.Api.Data;
 using MindPal.Api.Reflection;
 using MindPal.Api.Services;
@@ -191,6 +192,8 @@ app.MapGet("/health/ready", async (
             statusCode: 503));
 
 app.MapAuth();
+
+app.MapConsents();
 
 app.MapReflection();
 
