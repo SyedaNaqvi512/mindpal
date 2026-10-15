@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_shell.dart';
 import '../services/auth_service.dart';
-import '../../journal/screens/journal_screen.dart';
 import 'login_screen.dart';
 
-/// Shows the journal when signed in, and the login screen otherwise.
+/// Shows the app when signed in, and the login screen otherwise.
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -30,7 +30,7 @@ class _AuthGateState extends State<AuthGate> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return signedIn
-        ? JournalScreen(onSignedOut: () => setState(() => _signedIn = false))
+        ? AppShell(onSignedOut: () => setState(() => _signedIn = false))
         : LoginScreen(onSignedIn: () => setState(() => _signedIn = true));
   }
 }

@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
-import '../../auth/services/auth_service.dart';
 import '../../../core/database/database_service.dart';
-import '../../../core/theme/theme_switcher_button.dart';
+import '../../../core/entries_changes.dart';
+import '../../auth/services/auth_service.dart';
 import '../services/cloud_reflection_engine.dart';
 import '../services/reflection_engine.dart';
 import '../services/reflection_service.dart';
 
 enum ReflectionMode { cloud, onDevice }
 
-class JournalScreen extends StatefulWidget {
-  const JournalScreen({super.key, required this.onSignedOut});
+class NewEntryScreen extends StatefulWidget {
+  const NewEntryScreen({super.key, required this.onSignedOut});
 
   final VoidCallback onSignedOut;
 
   @override
-  State<JournalScreen> createState() => _JournalScreenState();
+  State<NewEntryScreen> createState() => _NewEntryScreenState();
 }
 
-class _JournalScreenState extends State<JournalScreen> {
+class _NewEntryScreenState extends State<NewEntryScreen> {
   final _controller = TextEditingController();
   final ReflectionEngine _cloudEngine = CloudReflectionEngine();
   final ReflectionEngine _deviceEngine = ReflectionService();
@@ -29,24 +30,9 @@ class _JournalScreenState extends State<JournalScreen> {
   bool _crisis = false;
   bool _loading = false;
   int _mood = 3;
-  List<Map<String, dynamic>> _recent = [];
 
   ReflectionEngine get _engine =>
       _mode == ReflectionMode.cloud ? _cloudEngine : _deviceEngine;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRecent();
-  }
-
-  Future<void> _loadRecent() async {
-    try {
-      final rows = await DatabaseService.getRecentEntries();
-      if (!mounted) return;
-      setState(() => _recent = rows);
-    } catch (_) {}
-  }
 
   Future<void> _reflect() async {
     final text = _controller.text.trim();
@@ -81,6 +67,8 @@ class _JournalScreenState extends State<JournalScreen> {
       setState(() => _result = reply.text);
       await _save(text, reply);
     } on SessionExpiredException {
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
       widget.onSignedOut();
     } on ReflectionException catch (e) {
       if (!mounted) return;
@@ -110,32 +98,18 @@ class _JournalScreenState extends State<JournalScreen> {
         serverReflectionId: reply.serverId,
       );
 
+      entriesChanged.value++;
+
       if (!mounted) return;
-
       _controller.clear();
-      await _loadRecent();
-
-      if (mounted) {
-        setState(() => _notice = 'Saved on this phone.');
-      }
+      setState(() => _notice = 'Saved on this phone.');
     } catch (_) {
       if (mounted) {
         setState(
-          () => _notice =
-              'The reflection could not be saved on this phone.',
+          () => _notice = 'The reflection could not be saved on this phone.',
         );
       }
     }
-  }
-
-  Future<void> _signOut() async {
-    await AuthService.instance.logout();
-    widget.onSignedOut();
-  }
-
-  String _pattern(Object? p) {
-    final s = p as String?;
-    return (s == null || s == 'none') ? '' : s.replaceAll('_', ' ');
   }
 
   @override
@@ -146,17 +120,17 @@ class _JournalScreenState extends State<JournalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hint = TextStyle(fontSize: 12, color: scheme.onSurfaceVariant);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MindPal'),
-        actions: [
-          const ThemeSwitcherButton(),
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: _loading ? null : _signOut,
-          ),
-        ],
+        title: const Text('New entry'),
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Symbols.arrow_back_rounded),
+          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -169,14 +143,10 @@ class _JournalScreenState extends State<JournalScreen> {
               maxLength: 5000,
               decoration: const InputDecoration(
                 hintText: 'How was your day? What is on your mind?',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'How do you feel? (1 = very low, 5 = very good)',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+            Text('How do you feel? (1 = very low, 5 = very good)', style: hint),
             Wrap(
               spacing: 8,
               children: [
@@ -184,9 +154,8 @@ class _JournalScreenState extends State<JournalScreen> {
                   ChoiceChip(
                     label: Text('$m'),
                     selected: _mood == m,
-                    onSelected: _loading
-                        ? null
-                        : (_) => setState(() => _mood = m),
+                    onSelected:
+                        _loading ? null : (_) => setState(() => _mood = m),
                   ),
               ],
             ),
@@ -196,19 +165,18 @@ class _JournalScreenState extends State<JournalScreen> {
                 ButtonSegment(
                   value: ReflectionMode.cloud,
                   label: Text('Cloud AI'),
-                  icon: Icon(Icons.cloud_outlined),
+                  icon: Icon(Symbols.cloud_rounded),
                 ),
                 ButtonSegment(
                   value: ReflectionMode.onDevice,
                   label: Text('Private (on-device)'),
-                  icon: Icon(Icons.phone_android),
+                  icon: Icon(Symbols.smartphone_rounded),
                 ),
               ],
               selected: {_mode},
               onSelectionChanged: _loading
                   ? null
-                  : (selection) =>
-                      setState(() => _mode = selection.first),
+                  : (selection) => setState(() => _mode = selection.first),
             ),
             const SizedBox(height: 8),
             Text(
@@ -217,7 +185,7 @@ class _JournalScreenState extends State<JournalScreen> {
                       'analysis. Use test text while developing.'
                   : 'On-device mode keeps your entry on this phone. '
                       'It needs the model file and can be slower.',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: hint,
             ),
             const SizedBox(height: 12),
             ElevatedButton(
@@ -234,9 +202,9 @@ class _JournalScreenState extends State<JournalScreen> {
             ],
             if (_crisis)
               Card(
-                color: Colors.red.shade50,
-                child: const Padding(
-                  padding: EdgeInsets.all(16),
+                color: scheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'It sounds like you are going through something very '
                     'painful. You deserve support from a real person. Please '
@@ -244,6 +212,7 @@ class _JournalScreenState extends State<JournalScreen> {
                     'service, or reach out to someone you trust right now.\n\n'
                     'Punjab Institute of Mental Health, Lahore: '
                     '+92 42 99203776',
+                    style: TextStyle(color: scheme.onErrorContainer),
                   ),
                 ),
               ),
@@ -257,40 +226,12 @@ class _JournalScreenState extends State<JournalScreen> {
             if (_notice != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  _notice!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
+                child: Text(_notice!, style: hint),
               ),
-            if (_recent.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text(
-                'Recent entries',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              for (final row in _recent)
-                Card(
-                  child: ListTile(
-                    title: Text(
-                      row['content'] as String,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      'Mood ${row['mood']} - '
-                      '${(row['created_at'] as String).substring(0, 10)}'
-                      '${_pattern(row['thinking_pattern']).isEmpty ? '' : ' - ${_pattern(row['thinking_pattern'])}'}',
-                    ),
-                  ),
-                ),
-            ],
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'MindPal is a reflection tool, not a therapist or medical advice.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: hint,
             ),
           ],
         ),
