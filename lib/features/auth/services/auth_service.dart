@@ -105,17 +105,20 @@ class AuthService {
     _access = access;
   }
 
-  /// POST with the access token. On 401 it refreshes the tokens once and retries.
-  Future<http.Response> authorizedPost(
-      String path, Map<String, dynamic> body) async {
+  /// Request with the access token. On 401 it refreshes the tokens once and retries.
+  Future<http.Response> authorizedRequest(
+    String method,
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
     _access ??= await _storage.read(key: _kAccess);
-    var r = await _send(path, body);
+    var r = await _send(method, path, body);
     if (r.statusCode == 401) {
       if (!await _refresh()) {
         await _clear();
         throw SessionExpiredException();
       }
-      r = await _send(path, body);
+      r = await _send(method, path, body);
       if (r.statusCode == 401) {
         await _clear();
         throw SessionExpiredException();
@@ -124,15 +127,29 @@ class AuthService {
     return r;
   }
 
-  Future<http.Response> _send(String path, Map<String, dynamic> body) =>
-      _client.post(
-        Uri.parse('$baseUrl$path'),
-        headers: {
-          ..._json,
-          if (_access != null) 'Authorization': 'Bearer $_access',
-        },
-        body: jsonEncode(body),
-      );
+  Future<http.Response> authorizedPost(String path, Map<String, dynamic> body) =>
+      authorizedRequest('POST', path, body);
+
+  Future<http.Response> authorizedGet(String path) =>
+      authorizedRequest('GET', path);
+
+  Future<http.Response> authorizedPut(String path, Map<String, dynamic> body) =>
+      authorizedRequest('PUT', path, body);
+
+  Future<http.Response> authorizedDelete(String path) =>
+      authorizedRequest('DELETE', path);
+
+  Future<http.Response> _send(
+      String method, String path, Map<String, dynamic>? body) async {
+    final request = http.Request(method, Uri.parse('$baseUrl$path'));
+    request.headers.addAll({
+      ..._json,
+      if (_access != null) 'Authorization': 'Bearer $_access',
+    });
+    if (body != null) request.body = jsonEncode(body);
+    final streamed = await _client.send(request);
+    return http.Response.fromStream(streamed);
+  }
 
   /// true = new tokens saved, false = server rejected the refresh token.
   /// Network problems are thrown, so a bad connection never signs the user out.

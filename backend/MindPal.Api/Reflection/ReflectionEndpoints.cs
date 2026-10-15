@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using MindPal.Api.Consents;
 using MindPal.Api.Data;
 
 namespace MindPal.Api.Reflection;
@@ -101,7 +102,23 @@ public static class ReflectionEndpoints
             });
         }
 
-        // 3. Per-user limits.
+        // 3. Consent (FR-17): no AI call without an active ai_processing consent.
+        var hasConsent = await db.Consents.AnyAsync(c =>
+            c.UserId == userId &&
+            c.Type == ConsentPolicy.AiProcessing &&
+            c.RevokedAt == null,
+            ct);
+
+        if (!hasConsent)
+        {
+            return Problem(
+                403,
+                "consent_required",
+                "Consent required",
+                "Please allow AI reflections before using this feature.");
+        }
+
+        // 4. Per-user limits.
         // Only successful reflections count toward the 10/hour and 30/day quota.
         // Failed attempts do not consume this allowance.
         // A separate cap on all non-rate-limited attempts blocks abuse.
@@ -137,7 +154,7 @@ public static class ReflectionEndpoints
                 $"You can request up to {ReflectionLimits.MaxPerHour} reflections per hour and {ReflectionLimits.MaxPerDay} per day. Please try again later.");
         }
 
-        // 4. Ask the AI engine, validate its answer, and record usage.
+        // 5. Ask the AI engine, validate its answer, and record usage.
         var sw = Stopwatch.StartNew();
 
         try

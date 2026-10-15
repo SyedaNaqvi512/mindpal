@@ -4,6 +4,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
 import '../../auth/services/auth_service.dart';
+import '../../consent/services/consent_service.dart';
+import '../../consent/widgets/consent_sheet.dart';
 import '../../safety/widgets/support_card.dart';
 import '../services/cloud_reflection_engine.dart';
 import '../services/quick_reflection_engine.dart';
@@ -62,6 +64,18 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     });
 
     try {
+      // FR-17: before the first cloud AI use, explain and ask for consent.
+      if (_mode == ReflectionMode.cloud && !await _ensureConsent()) {
+        if (!mounted) return;
+        setState(() {
+          _result = 'Cloud reflections need your permission to send this '
+              'entry to an AI service. You can allow it later in Settings, '
+              'or get a quick reflection on this phone instead.';
+          _canQuick = true;
+        });
+        return;
+      }
+
       final reply = await _engine.reflect(text);
       if (!mounted) return;
 
@@ -73,10 +87,22 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
       setState(() => _result = reply.text);
       await _save(text, reply);
     } on SessionExpiredException {
+      ConsentService.instance.clear();
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
       widget.onSignedOut();
+    } on ConsentRequiredException {
+      ConsentService.instance.clear();
+      if (!mounted) return;
+      setState(() => _result = 'Please confirm your permission, then tap '
+          'Reflect again.');
     } on ReflectionException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _result = e.message;
+        _canQuick = _mode == ReflectionMode.cloud;
+      });
+    } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
         _result = e.message;
@@ -95,6 +121,15 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     }
   }
 
+
+  Future<bool> _ensureConsent() async {
+    if (await ConsentService.instance.isGranted()) return true;
+    if (!mounted) return false;
+    final agreed = await showConsentSheet(context);
+    if (!agreed) return false;
+    await ConsentService.instance.grant();
+    return true;
+  }
 
   // Offline fallback: rule-based, no AI. Always labelled as basic.
   Future<void> _quick() async {

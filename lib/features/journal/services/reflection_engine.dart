@@ -24,3 +24,9 @@ class ReflectionException implements Exception {
   @override
   String toString() => message;
 }
+
+/// The server refused because AI consent is missing (FR-17).
+class ConsentRequiredException extends ReflectionException {
+  ConsentRequiredException()
+      : super('Please allow AI reflections to continue.');
+}
