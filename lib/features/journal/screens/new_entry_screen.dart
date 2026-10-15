@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
 import '../../auth/services/auth_service.dart';
+import '../../safety/widgets/support_card.dart';
 import '../services/cloud_reflection_engine.dart';
 import '../services/quick_reflection_engine.dart';
 import '../services/reflection_engine.dart';
@@ -238,22 +239,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                 'Thinking... the first reply can take up to a minute.',
               ),
             ],
-            if (_crisis)
-              Card(
-                color: scheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'It sounds like you are going through something very '
-                    'painful. You deserve support from a real person. Please '
-                    'contact your local emergency number or a mental health '
-                    'service, or reach out to someone you trust right now.\n\n'
-                    'Punjab Institute of Mental Health, Lahore: '
-                    '+92 42 99203776',
-                    style: TextStyle(color: scheme.onErrorContainer),
-                  ),
-                ),
-              ),
+            if (_crisis) const SupportCard(),
             if (_quickUsed)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
