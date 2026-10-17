@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_shell.dart';
+import '../../onboarding/screens/onboarding_screen.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 
-/// Shows the app when signed in, and the login screen otherwise.
+/// Decides what to show: onboarding (first launch), sign in, or the app.
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -14,23 +15,35 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   bool? _signedIn;
+  bool? _seenOnboarding;
 
   @override
   void initState() {
     super.initState();
-    AuthService.instance.isSignedIn().then((value) {
-      if (mounted) setState(() => _signedIn = value);
+    _init();
+  }
+
+  Future<void> _init() async {
+    final signedIn = await AuthService.instance.isSignedIn();
+    final seen = await onboardingSeen();
+    if (!mounted) return;
+    setState(() {
+      _signedIn = signedIn;
+      _seenOnboarding = seen;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final signedIn = _signedIn;
-    if (signedIn == null) {
+    if (_signedIn == null || _seenOnboarding == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    return signedIn
-        ? AppShell(onSignedOut: () => setState(() => _signedIn = false))
-        : LoginScreen(onSignedIn: () => setState(() => _signedIn = true));
+    if (_signedIn!) {
+      return AppShell(onSignedOut: () => setState(() => _signedIn = false));
+    }
+    if (!_seenOnboarding!) {
+      return OnboardingScreen(onDone: () => setState(() => _seenOnboarding = true));
+    }
+    return LoginScreen(onSignedIn: () => setState(() => _signedIn = true));
   }
 }

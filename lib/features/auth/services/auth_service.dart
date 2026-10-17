@@ -3,9 +3,14 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import '../../account/models/user_profile.dart';
+
 class AuthException implements Exception {
-  AuthException(this.message);
+  AuthException(this.message, {this.code});
   final String message;
+
+  /// Stable error code from the server (for example `invalid_code`).
+  final String? code;
 
   @override
   String toString() => message;
@@ -14,6 +19,19 @@ class AuthException implements Exception {
 class SessionExpiredException extends AuthException {
   SessionExpiredException()
       : super('Your session has expired. Please sign in again.');
+}
+
+/// Login was refused only because the email is not verified yet.
+class EmailNotVerifiedException extends AuthException {
+  EmailNotVerifiedException(this.email)
+      : super('Please verify your email first.', code: 'email_not_verified');
+  final String email;
+}
+
+class RegisterResult {
+  const RegisterResult({required this.verificationRequired, required this.email});
+  final bool verificationRequired;
+  final String email;
 }
 
 Map<String, dynamic> decodeJson(String body) {
@@ -51,6 +69,8 @@ class AuthService {
   static const _json = {'Content-Type': 'application/json'};
   static const _kAccess = 'mindpal_access_token';
   static const _kRefresh = 'mindpal_refresh_token';
+  static const _network =
+      'Could not reach MindPal. Check your connection and try again.';
 
   static final FlutterSecureStorage _storage = FlutterSecureStorage();
   final http.Client _client = http.Client();
@@ -65,36 +85,136 @@ class AuthService {
     }
   }
 
-  Future<void> register(String name, String email, String password) =>
-      _authenticate('/auth/register', {
-        'displayName': name.trim(),
-        'email': email.trim(),
-        'password': password,
-      });
+  // ---- public (no token) calls -------------------------------------------
 
-  Future<void> login(String email, String password) =>
-      _authenticate('/auth/login', {
-        'email': email.trim(),
-        'password': password,
-      });
+  Future<RegisterResult> register({
+    required String name,
+    required String email,
+    required String password,
+    required String gender,
+  }) async {
+    final r = await _post('/auth/register', {
+      'displayName': name.trim(),
+      'email': email.trim(),
+      'password': password,
+      'gender': gender,
+    });
+    final data = decodeJson(r.body);
+    if (r.statusCode != 200 && r.statusCode != 201) throw _error(data);
+    final auth = data['auth'];
+    final required = (data['verificationRequired'] as bool?) ?? false;
+    if (!required && auth is Map<String, dynamic>) await _saveSession(auth);
+    return RegisterResult(
+      verificationRequired: required,
+      email: (data['email'] as String?) ?? email.trim(),
+    );
+  }
 
-  Future<void> _authenticate(String path, Map<String, dynamic> body) async {
-    http.Response r;
+  Future<void> login(String email, String password) async {
+    final r = await _post('/auth/login', {
+      'email': email.trim(),
+      'password': password,
+    });
+    final data = decodeJson(r.body);
+    if (r.statusCode == 200) {
+      await _saveSession(data);
+      return;
+    }
+    if (data['code'] == 'email_not_verified') {
+      throw EmailNotVerifiedException(email.trim());
+    }
+    throw _error(data);
+  }
+
+  /// Checks the emailed code. On success the user is signed in.
+  Future<void> verifyEmail(String email, String code) async {
+    final r = await _post(
+        '/auth/verify-email', {'email': email.trim(), 'code': code.trim()});
+    final data = decodeJson(r.body);
+    if (r.statusCode != 200) throw _error(data);
+    await _saveSession(data);
+  }
+
+  Future<void> resendVerification(String email) async {
+    final r = await _post('/auth/resend-verification', {'email': email.trim()});
+    if (r.statusCode != 202 && r.statusCode != 200) {
+      throw _error(decodeJson(r.body));
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    final r = await _post('/auth/forgot-password', {'email': email.trim()});
+    if (r.statusCode != 202 && r.statusCode != 200) {
+      throw _error(decodeJson(r.body));
+    }
+  }
+
+  Future<void> resetPassword(String email, String code, String newPassword) async {
+    final r = await _post('/auth/reset-password', {
+      'email': email.trim(),
+      'code': code.trim(),
+      'newPassword': newPassword,
+    });
+    if (r.statusCode != 204 && r.statusCode != 200) {
+      throw _error(decodeJson(r.body));
+    }
+  }
+
+  // ---- signed-in calls ---------------------------------------------------
+
+  Future<UserProfile> fetchProfile() async {
+    final r = await authorizedGet('/me');
+    if (r.statusCode != 200) throw _error(decodeJson(r.body));
+    return UserProfile.fromJson(decodeJson(r.body));
+  }
+
+
+  
+ 
+ 
+  Future<UserProfile> updateProfile({
+    String? displayName,
+    int? avatarId,
+  }) async {
+    final r = await authorizedRequest('PATCH', '/me', {
+      'displayName': ?displayName?.trim(),
+      'avatarId': ?avatarId,
+    });
+
+    if (r.statusCode != 200) throw _error(decodeJson(r.body));
+
+    return UserProfile.fromJson(decodeJson(r.body));
+  }
+
+
+
+
+
+  /// The server signs out every other device and returns fresh tokens for this one.
+  Future<void> changePassword(String current, String next) async {
+    final r = await authorizedPost('/me/password', {
+      'currentPassword': current,
+      'newPassword': next,
+    });
+    final data = decodeJson(r.body);
+    if (r.statusCode != 200) throw _error(data);
+    await _saveSession(data);
+  }
+
+  // ---- plumbing ----------------------------------------------------------
+
+  AuthException _error(Map<String, dynamic> d) =>
+      AuthException(problemMessage(d), code: d['code'] as String?);
+
+  Future<http.Response> _post(String path, Map<String, dynamic> body) async {
     try {
-      r = await _client
+      return await _client
           .post(Uri.parse('$baseUrl$path'),
               headers: _json, body: jsonEncode(body))
           .timeout(const Duration(seconds: 20));
     } catch (_) {
-      throw AuthException(
-          'Could not reach MindPal. Check your connection and try again.');
+      throw AuthException(_network);
     }
-    final data = decodeJson(r.body);
-    if (r.statusCode == 200 || r.statusCode == 201) {
-      await _saveSession(data);
-      return;
-    }
-    throw AuthException(problemMessage(data));
   }
 
   Future<void> _saveSession(Map<String, dynamic> d) async {
@@ -112,17 +232,24 @@ class AuthService {
     Map<String, dynamic>? body,
   ]) async {
     _access ??= await _storage.read(key: _kAccess);
-    var r = await _send(method, path, body);
-    if (r.statusCode == 401) {
-      if (!await _refresh()) {
-        await _clear();
-        throw SessionExpiredException();
-      }
+    http.Response r;
+    try {
       r = await _send(method, path, body);
       if (r.statusCode == 401) {
-        await _clear();
-        throw SessionExpiredException();
+        if (!await _refresh()) {
+          await _clear();
+          throw SessionExpiredException();
+        }
+        r = await _send(method, path, body);
+        if (r.statusCode == 401) {
+          await _clear();
+          throw SessionExpiredException();
+        }
       }
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw AuthException(_network);
     }
     return r;
   }
@@ -147,7 +274,8 @@ class AuthService {
       if (_access != null) 'Authorization': 'Bearer $_access',
     });
     if (body != null) request.body = jsonEncode(body);
-    final streamed = await _client.send(request);
+    final streamed =
+        await _client.send(request).timeout(const Duration(seconds: 20));
     return http.Response.fromStream(streamed);
   }
 

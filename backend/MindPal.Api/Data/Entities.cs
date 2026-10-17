@@ -7,6 +7,7 @@ public class User
     public Guid Id { get; set; }
     public string DisplayName { get; set; } = "";
     public short AvatarId { get; set; } = 1;
+    public string Gender { get; set; } = "unspecified";
     public string Email { get; set; } = "";
     public string PasswordHash { get; set; } = "";
     public string Role { get; set; } = "user";               // user | admin
@@ -37,6 +38,7 @@ public class OneTimeToken
     public string TokenHash { get; set; } = "";
     public DateTime ExpiresAt { get; set; }
     public DateTime? UsedAt { get; set; }
+    public short FailedAttempts { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

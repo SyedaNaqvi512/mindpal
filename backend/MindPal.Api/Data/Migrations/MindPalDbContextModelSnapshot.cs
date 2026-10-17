@@ -178,6 +178,10 @@ namespace MindPal.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<short>("FailedAttempts")
+                        .HasColumnType("smallint")
+                        .HasColumnName("failed_attempts");
+
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -385,6 +389,14 @@ namespace MindPal.Api.Data.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("failed_login_count");
 
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("unspecified")
+                        .HasColumnName("gender");
+
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("locked_until");
@@ -437,6 +449,8 @@ namespace MindPal.Api.Data.Migrations
                             t.HasCheckConstraint("ck_users_deletion", "(status = 'pending_deletion') = (deletion_requested_at IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_users_email_len", "char_length(email) BETWEEN 3 AND 254");
+
+                            t.HasCheckConstraint("ck_users_gender", "gender IN ('female','male','unspecified')");
 
                             t.HasCheckConstraint("ck_users_name_len", "char_length(btrim(display_name)) BETWEEN 1 AND 40");
 
