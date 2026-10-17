@@ -4,6 +4,9 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../account/models/user_profile.dart';
+import '../../account/screens/profile_screen.dart';
+import '../../account/widgets/avatar_image.dart';
 import '../../auth/services/auth_service.dart';
 import '../../consent/services/consent_service.dart';
 import '../../consent/widgets/consent_sheet.dart';
@@ -71,6 +74,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           Text('Account', style: text.titleMedium),
           const SizedBox(height: 8),
+          const _ProfileTile(),
+          const SizedBox(height: 8),
           Card(
             child: ListTile(
               leading: const Icon(Symbols.logout_rounded),
@@ -79,6 +84,50 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileTile extends StatefulWidget {
+  const _ProfileTile();
+
+  @override
+  State<_ProfileTile> createState() => _ProfileTileState();
+}
+
+class _ProfileTileState extends State<_ProfileTile> {
+  late Future<UserProfile?> _future = _load();
+
+  Future<UserProfile?> _load() async {
+    try {
+      return await AuthService.instance.fetchProfile();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: FutureBuilder<UserProfile?>(
+        future: _future,
+        builder: (context, snap) {
+          final p = snap.data;
+          return ListTile(
+            leading: p == null
+                ? const Icon(Symbols.account_circle_rounded)
+                : AvatarImage(avatarId: p.avatarId, size: 40),
+            title: Text(p?.displayName.isNotEmpty == true ? p!.displayName : 'Profile'),
+            subtitle: Text(p?.email ?? 'View and edit your profile'),
+            trailing: const Icon(Symbols.chevron_right_rounded),
+            onTap: () async {
+              await Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              if (mounted) setState(() => _future = _load());
+            },
+          );
+        },
       ),
     );
   }

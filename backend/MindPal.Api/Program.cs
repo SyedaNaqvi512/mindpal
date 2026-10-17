@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using MindPal.Api.Auth;
 using MindPal.Api.Consents;
 using MindPal.Api.Data;
+using MindPal.Api.Email;
 using MindPal.Api.Reflection;
 using MindPal.Api.Services;
 using Npgsql;
@@ -17,30 +18,39 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
 
+// SMTP email sender (credentials come from User Secrets/environment)
+builder.Services.AddTransient<SmtpEmailSender>();
+
 // Request body limit 20 KB (SRS v1.1)
-builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 20 * 1024);
+builder.WebHost.ConfigureKestrel(o =>
+    o.Limits.MaxRequestBodySize = 20 * 1024);
 
 // Database context
 builder.Services.AddDbContext<MindPalDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("MindPal")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("MindPal")));
 
-// ---- JWT settings (secret must come from user-secrets / environment, never from git) ----
-var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+// ---- JWT settings (secret must come from User Secrets / environment) ----
+var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
+          ?? new JwtOptions();
 
 if (string.IsNullOrWhiteSpace(jwt.Key) ||
     Encoding.UTF8.GetByteCount(jwt.Key) < 32)
 {
     throw new InvalidOperationException(
-        "Jwt:Key is missing or shorter than 32 bytes. Set it with 'dotnet user-secrets set Jwt:Key <value>'.");
+        "Jwt:Key is missing or shorter than 32 bytes. " +
+        "Set it with 'dotnet user-secrets set Jwt:Key <value>'.");
 }
 
 builder.Services.AddSingleton(jwt);
 builder.Services.AddSingleton<TokenService>();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(
+        JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
     {
-        o.MapInboundClaims = false; // Keep claim names "sub" and "role"
+        o.MapInboundClaims = false;
+
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -80,7 +90,8 @@ builder.Services.AddRateLimiter(o =>
         ctx.HttpContext.Response.ContentType = "application/problem+json";
 
         await ctx.HttpContext.Response.WriteAsync(
-            "{\"type\":\"about:blank\",\"title\":\"Too many requests\",\"status\":429,\"code\":\"rate_limited\"}",
+            "{\"type\":\"about:blank\",\"title\":\"Too many requests\"," +
+            "\"status\":429,\"code\":\"rate_limited\"}",
             ct);
     };
 
@@ -115,7 +126,7 @@ builder.Services.AddRateLimiter(o =>
             }));
 });
 
-// Render sits behind a proxy: use the real client IP for rate limits
+// Render sits behind a proxy: use the real client IP for rate limits.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders =
@@ -138,7 +149,7 @@ app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi(); // JSON at /openapi/v1.json
+    app.MapOpenApi();
 }
 
 app.MapGet("/health", () =>
@@ -192,12 +203,10 @@ app.MapGet("/health/ready", async (
             statusCode: 503));
 
 app.MapAuth();
-
 app.MapConsents();
-
 app.MapReflection();
 
 app.Run();
 
-// Lets the test project start the API
+// Lets the test project start the API.
 public partial class Program { }
