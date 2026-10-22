@@ -18,18 +18,21 @@ class AuthException implements Exception {
 
 class SessionExpiredException extends AuthException {
   SessionExpiredException()
-      : super('Your session has expired. Please sign in again.');
+    : super('Your session has expired. Please sign in again.');
 }
 
 /// Login was refused only because the email is not verified yet.
 class EmailNotVerifiedException extends AuthException {
   EmailNotVerifiedException(this.email)
-      : super('Please verify your email first.', code: 'email_not_verified');
+    : super('Please verify your email first.', code: 'email_not_verified');
   final String email;
 }
 
 class RegisterResult {
-  const RegisterResult({required this.verificationRequired, required this.email});
+  const RegisterResult({
+    required this.verificationRequired,
+    required this.email,
+  });
   final bool verificationRequired;
   final String email;
 }
@@ -128,8 +131,10 @@ class AuthService {
 
   /// Checks the emailed code. On success the user is signed in.
   Future<void> verifyEmail(String email, String code) async {
-    final r = await _post(
-        '/auth/verify-email', {'email': email.trim(), 'code': code.trim()});
+    final r = await _post('/auth/verify-email', {
+      'email': email.trim(),
+      'code': code.trim(),
+    });
     final data = decodeJson(r.body);
     if (r.statusCode != 200) throw _error(data);
     await _saveSession(data);
@@ -149,7 +154,11 @@ class AuthService {
     }
   }
 
-  Future<void> resetPassword(String email, String code, String newPassword) async {
+  Future<void> resetPassword(
+    String email,
+    String code,
+    String newPassword,
+  ) async {
     final r = await _post('/auth/reset-password', {
       'email': email.trim(),
       'code': code.trim(),
@@ -168,10 +177,6 @@ class AuthService {
     return UserProfile.fromJson(decodeJson(r.body));
   }
 
-
-  
- 
- 
   Future<UserProfile> updateProfile({
     String? displayName,
     int? avatarId,
@@ -185,10 +190,6 @@ class AuthService {
 
     return UserProfile.fromJson(decodeJson(r.body));
   }
-
-
-
-
 
   /// The server signs out every other device and returns fresh tokens for this one.
   Future<void> changePassword(String current, String next) async {
@@ -209,9 +210,12 @@ class AuthService {
   Future<http.Response> _post(String path, Map<String, dynamic> body) async {
     try {
       return await _client
-          .post(Uri.parse('$baseUrl$path'),
-              headers: _json, body: jsonEncode(body))
-          .timeout(const Duration(seconds: 20));
+          .post(
+            Uri.parse('$baseUrl$path'),
+            headers: _json,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 70));
     } catch (_) {
       throw AuthException(_network);
     }
@@ -254,8 +258,10 @@ class AuthService {
     return r;
   }
 
-  Future<http.Response> authorizedPost(String path, Map<String, dynamic> body) =>
-      authorizedRequest('POST', path, body);
+  Future<http.Response> authorizedPost(
+    String path,
+    Map<String, dynamic> body,
+  ) => authorizedRequest('POST', path, body);
 
   Future<http.Response> authorizedGet(String path) =>
       authorizedRequest('GET', path);
@@ -267,15 +273,19 @@ class AuthService {
       authorizedRequest('DELETE', path);
 
   Future<http.Response> _send(
-      String method, String path, Map<String, dynamic>? body) async {
+    String method,
+    String path,
+    Map<String, dynamic>? body,
+  ) async {
     final request = http.Request(method, Uri.parse('$baseUrl$path'));
     request.headers.addAll({
       ..._json,
       if (_access != null) 'Authorization': 'Bearer $_access',
     });
     if (body != null) request.body = jsonEncode(body);
-    final streamed =
-        await _client.send(request).timeout(const Duration(seconds: 20));
+    final streamed = await _client
+        .send(request)
+        .timeout(const Duration(seconds: 20));
     return http.Response.fromStream(streamed);
   }
 
@@ -285,8 +295,11 @@ class AuthService {
     final rt = await _storage.read(key: _kRefresh);
     if (rt == null) return false;
     final r = await _client
-        .post(Uri.parse('$baseUrl/auth/refresh'),
-            headers: _json, body: jsonEncode({'refreshToken': rt}))
+        .post(
+          Uri.parse('$baseUrl/auth/refresh'),
+          headers: _json,
+          body: jsonEncode({'refreshToken': rt}),
+        )
         .timeout(const Duration(seconds: 20));
     if (r.statusCode == 401 || r.statusCode == 400) return false;
     if (r.statusCode != 200) throw Exception('Refresh failed');
@@ -299,8 +312,11 @@ class AuthService {
       final rt = await _storage.read(key: _kRefresh);
       if (rt != null) {
         await _client
-            .post(Uri.parse('$baseUrl/auth/logout'),
-                headers: _json, body: jsonEncode({'refreshToken': rt}))
+            .post(
+              Uri.parse('$baseUrl/auth/logout'),
+              headers: _json,
+              body: jsonEncode({'refreshToken': rt}),
+            )
             .timeout(const Duration(seconds: 10));
       }
     } catch (_) {}

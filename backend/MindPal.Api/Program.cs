@@ -205,6 +205,7 @@ app.MapGet("/health/ready", async (
 app.MapAuth();
 app.MapConsents();
 app.MapReflection();
+app.MapFeedback();
 
 app.Run();
 
