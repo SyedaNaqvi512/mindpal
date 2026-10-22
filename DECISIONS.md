@@ -39,3 +39,24 @@ wrong guesses.
 `Auth:RequireEmailVerification` defaults to true. Register sends a code and returns no
 tokens; the user gets tokens only after entering the code. Setting it to false skips the
 check (for local testing only).
+
+## D-08 Mood shown as emoji + word, stored as 1-5
+
+**SRS:** FR-10 says a mood rating from 1 (very low) to 5 (very good).
+**Decision:** The app shows five emojis, each with a word (Very low, Low, Okay, Good, Very good).
+The database and the server contract still use the number 1-5, so the SRS rule and the Insights
+calculations are unchanged. The word is always shown with the emoji so the choice is clear and accessible.
+
+## D-09 Entry is saved before any reflection
+
+**SRS:** FR-09 and FR-10 require saving an entry; the earlier build saved only after a reflection.
+**Decision:** "Save entry" stores the entry on the phone without any AI. "Save and reflect" saves
+first, then asks for the reflection, so a failed or refused reflection never loses the text.
+One reflection is kept per entry; reflecting again replaces it.
+
+## D-10 Voice dictation uses the phone's speech recognition
+
+**SRS:** FR-11, FR-12.
+**Decision:** The `speech_to_text` plugin returns text only; MindPal never records, keeps or uploads
+an audio file. The Android recogniser may use the phone's speech service (often Google's) to
+convert speech, which the screen explains in one line.

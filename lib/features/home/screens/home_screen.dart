@@ -10,10 +10,12 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.onNewEntry,
     required this.onSeeAll,
+    required this.onSignedOut,
   });
 
   final VoidCallback onNewEntry;
   final VoidCallback onSeeAll;
+  final VoidCallback onSignedOut;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -31,9 +33,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _load() async {
     try {
-      final rows = await DatabaseService.getRecentEntries();
+      final rows = await DatabaseService.getRecentEntries(limit: 3);
       if (!mounted) return;
-      setState(() => _recent = rows.take(3).toList());
+      setState(() => _recent = rows);
     } catch (_) {}
   }
 
@@ -85,7 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             )
           else
-            for (final row in _recent) EntryTile(row: row),
+            for (final row in _recent)
+              EntryTile(row: row, onSignedOut: widget.onSignedOut),
           const SizedBox(height: 24),
           Text(
             'MindPal is a reflection tool, not a therapist or medical advice.',
