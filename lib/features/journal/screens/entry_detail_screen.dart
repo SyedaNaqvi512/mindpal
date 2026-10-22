@@ -5,6 +5,7 @@ import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
 import '../models/entry_format.dart';
 import '../models/mood.dart';
+import '../widgets/reflection_panel.dart';
 import 'new_entry_screen.dart';
 
 /// FR-16: one entry with its mood, tags, text and saved reflection.
@@ -26,6 +27,7 @@ class EntryDetailScreen extends StatefulWidget {
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Map<String, dynamic>? _row;
   bool _loaded = false;
+  int _panelVersion = 0;
 
   @override
   void initState() {
@@ -53,7 +55,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         editId: widget.entryId,
       ),
     ));
-    if (mounted) _load();
+    if (mounted) {
+      setState(() => _panelVersion++);
+      _load();
+    }
   }
 
   Future<void> _delete() async {
@@ -156,38 +161,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                     SelectableText(row['content'] as String,
                         style: text.bodyLarge),
                     const SizedBox(height: 24),
-                    Text('Reflection', style: text.titleMedium),
-                    const SizedBox(height: 8),
-                    if (row['reflection_text'] == null)
-                      Text(
-                        'No reflection saved for this entry. You can add one '
-                        'from Edit, using Save and reflect.',
-                        style: TextStyle(color: scheme.onSurfaceVariant),
-                      )
-                    else
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (row['thinking_pattern'] != null &&
-                                  row['thinking_pattern'] != 'none')
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Text(
-                                    (row['thinking_pattern'] as String)
-                                        .replaceAll('_', ' '),
-                                    style: TextStyle(
-                                        color: scheme.primary,
-                                        fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                              SelectableText(row['reflection_text'] as String),
-                            ],
-                          ),
-                        ),
-                      ),
+                    ReflectionPanel(entryId: widget.entryId, version: _panelVersion),
                     const SizedBox(height: 24),
                     Text(
                       'MindPal is a reflection tool, not a therapist or medical advice.',

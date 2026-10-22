@@ -60,3 +60,17 @@ One reflection is kept per entry; reflecting again replaces it.
 **Decision:** The `speech_to_text` plugin returns text only; MindPal never records, keeps or uploads
 an audio file. The Android recogniser may use the phone's speech service (often Google's) to
 convert speech, which the screen explains in one line.
+
+## D-11 Reflection is a draft until the user decides, and is rated separately
+**SRS:** FR-23, FR-24.
+**Decision:** A new reflection is saved on the phone as a draft, so it survives closing the app.
+The user can Accept, Edit or Dismiss it; Dismiss deletes it. An edited reflection is kept as plain text.
+The rating (helpful or not helpful, with an optional reason category) is stored on the phone and sent to
+`POST /reflections/{id}/feedback`. Only the rating and the reason are sent, never the entry text.
+Quick and on-device reflections have no server record, so their rating stays on the phone.
+
+## D-12 Campus-support information is not shown
+**SRS:** FR-19 asks for verified helpline and campus-support information.
+**Decision:** PTUT has no counselling or campus-support service we can verify, so the support card
+shows the verified helpline, the emergency-services line and the "trusted person" advice only.
+A campus contact will be added in `support_info.dart` if one is confirmed later. Nothing is invented.

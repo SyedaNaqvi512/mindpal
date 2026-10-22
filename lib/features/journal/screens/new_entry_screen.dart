@@ -16,6 +16,7 @@ import '../services/quick_reflection_engine.dart';
 import '../services/reflection_engine.dart';
 import '../services/reflection_service.dart';
 import '../widgets/mood_picker.dart';
+import '../widgets/reflection_panel.dart';
 
 enum ReflectionMode { cloud, onDevice }
 
@@ -44,7 +45,9 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   bool _crisis = false;
   bool _loading = false;
   bool _canQuick = false; // cloud failed: offer the offline Quick reflection
-  bool _quickUsed = false;
+  bool _canRetry = false; // the last reflection failed in a way that may pass
+  bool _showPanel = false;
+  int _panelVersion = 0;
   bool _moodMissing = false;
   bool _opening = false; // loading an entry to edit
   bool _speechReady = false;
@@ -63,6 +66,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   void initState() {
     super.initState();
     _savedId = widget.editId;
+    _showPanel = widget.editId != null;
     _controller.addListener(() => setState(() {}));
     if (_editing) _openForEdit();
   }
@@ -140,7 +144,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
           selection: TextSelection.collapsed(offset: min(text.length, _maxLength)),
         );
       },
-            listenOptions: SpeechListenOptions(
+      listenOptions: SpeechListenOptions(
         listenFor: const Duration(minutes: 2),
         pauseFor: const Duration(seconds: 5),
       ),
@@ -222,7 +226,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
       _result = null;
       _notice = null;
       _canQuick = false;
-      _quickUsed = false;
+      _canRetry = false;
     });
 
     try {
@@ -247,8 +251,8 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
         return;
       }
 
-      setState(() => _result = reply.text);
-      await _saveReflection(id, reply);
+      await _saveReflection(id, reply,
+          _mode == ReflectionMode.cloud ? 'cloud' : 'device');
     } on SessionExpiredException {
       ConsentService.instance.clear();
       if (!mounted) return;
@@ -263,18 +267,21 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
       if (!mounted) return;
       setState(() {
         _result = e.message;
+        _canRetry = e.canRetry;
         _canQuick = _mode == ReflectionMode.cloud;
       });
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
         _result = e.message;
+        _canRetry = true;
         _canQuick = _mode == ReflectionMode.cloud;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
-        _result = 'Something went wrong: $e';
+        _result = 'Something went wrong. Your entry is saved. Please try again.';
+        _canRetry = true;
         _canQuick = _mode == ReflectionMode.cloud;
       });
     } finally {
@@ -312,25 +319,36 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     if (!mounted) return;
     setState(() {
       _crisis = false;
-      _result = reply.text;
-      _quickUsed = true;
+      _result = null;
       _canQuick = false;
+      _canRetry = false;
       _notice = null;
     });
-    await _saveReflection(id, reply);
+    await _saveReflection(id, reply, 'quick');
   }
 
   // The journal text stays on the phone, in the encrypted database.
-  Future<void> _saveReflection(int entryId, ReflectionResult reply) async {
+  // The reflection starts as a draft until the user accepts, edits or dismisses it.
+  Future<void> _saveReflection(
+      int entryId, ReflectionResult reply, String source) async {
     try {
       await DatabaseService.replaceReflection(
         entryId: entryId,
         text: reply.text,
         thinkingPattern: reply.pattern,
         serverReflectionId: reply.serverId,
+        partsJson: reply.parts?.encode(),
+        source: source,
+        status: 'draft',
       );
       entriesChanged.value++;
-      if (mounted) setState(() => _notice = 'Saved on this phone.');
+      if (mounted) {
+        setState(() {
+          _showPanel = true;
+          _panelVersion++;
+          _notice = null;
+        });
+      }
     } catch (_) {
       if (mounted) {
         setState(
@@ -514,21 +532,26 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                     ),
                   ],
                   if (_crisis) const SupportCard(),
-                  if (_quickUsed)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'Quick reflection: a basic, rule-based reply made on '
-                        'this phone. It is not AI and not therapy.',
-                        style: hint,
-                      ),
-                    ),
                   if (_result != null)
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: SelectableText(_result!),
                       ),
+                    ),
+                  if (_canRetry) ...[
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: busy ? null : _reflect,
+                      icon: const Icon(Symbols.refresh_rounded),
+                      label: const Text('Try again'),
+                    ),
+                  ],
+                  if (_showPanel && _savedId != null && !_loading)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: ReflectionPanel(
+                          entryId: _savedId!, version: _panelVersion),
                     ),
                   if (_canQuick) ...[
                     const SizedBox(height: 8),

@@ -6,7 +6,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 
 class DatabaseService {
   static const String _databaseName = 'mindpal.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
   static const String _databaseKeyName = 'mindpal_database_key';
 
   static final FlutterSecureStorage _secureStorage =
@@ -63,6 +63,10 @@ class DatabaseService {
           await _createTagsTable(db);
           await _createIndexes(db);
         }
+        // (a database older than version 2 got the full reflections table above)
+        if (oldVersion >= 2 && oldVersion < 4) {
+          await _addReflectionColumns(db);
+        }
       },
     );
   }
@@ -77,11 +81,34 @@ class DatabaseService {
         thinking_pattern TEXT,
         server_reflection_id TEXT,
         created_at TEXT NOT NULL,
+        parts_json TEXT,
+        status TEXT NOT NULL DEFAULT 'accepted',
+        source TEXT NOT NULL DEFAULT 'unknown',
+        edited INTEGER NOT NULL DEFAULT 0,
+        rating TEXT,
+        rating_reason TEXT,
+        rating_sent INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (entry_id)
           REFERENCES journal_entries (id)
           ON DELETE CASCADE
       )
     ''');
+  }
+
+  /// Version 4: reflection drafts, source label, edits and ratings (FR-22 to FR-24).
+  /// Reflections saved before this version count as accepted.
+  static Future<void> _addReflectionColumns(Database db) async {
+    for (final sql in const [
+      'ALTER TABLE reflections ADD COLUMN parts_json TEXT',
+      "ALTER TABLE reflections ADD COLUMN status TEXT NOT NULL DEFAULT 'accepted'",
+      "ALTER TABLE reflections ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'",
+      'ALTER TABLE reflections ADD COLUMN edited INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE reflections ADD COLUMN rating TEXT',
+      'ALTER TABLE reflections ADD COLUMN rating_reason TEXT',
+      'ALTER TABLE reflections ADD COLUMN rating_sent INTEGER NOT NULL DEFAULT 0',
+    ]) {
+      await db.execute(sql);
+    }
   }
 
   /// Feeling tags of an entry (FR-10).
@@ -204,11 +231,15 @@ class DatabaseService {
   }
 
   /// Keeps one reflection per entry: the new one replaces the old one.
+  /// A new reflection starts as a draft until the user decides (FR-23).
   static Future<int> replaceReflection({
     required int entryId,
     required String text,
     String? thinkingPattern,
     String? serverReflectionId,
+    String? partsJson,
+    String source = 'unknown',
+    String status = 'draft',
   }) async {
     final db = await database;
 
@@ -221,8 +252,77 @@ class DatabaseService {
         'thinking_pattern': thinkingPattern,
         'server_reflection_id': serverReflectionId,
         'created_at': DateTime.now().toIso8601String(),
+        'parts_json': partsJson,
+        'source': source,
+        'status': status,
       });
     });
+  }
+
+  /// The reflection of an entry, or null.
+  static Future<Map<String, dynamic>?> getReflection(int entryId) async {
+    final db = await database;
+    final rows = await db.query('reflections',
+        where: 'entry_id = ?',
+        whereArgs: [entryId],
+        orderBy: 'id DESC',
+        limit: 1);
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  /// Accept a draft (FR-23).
+  static Future<void> acceptReflection(int entryId) async {
+    final db = await database;
+    await db.update('reflections', {'status': 'accepted'},
+        where: 'entry_id = ?', whereArgs: [entryId]);
+  }
+
+  /// Edit the reflection text. The edited text is kept as plain text and accepted.
+  static Future<void> editReflection(int entryId, String text) async {
+    final db = await database;
+    await db.update(
+        'reflections',
+        {
+          'reflection_text': text,
+          'parts_json': null,
+          'edited': 1,
+          'status': 'accepted',
+        },
+        where: 'entry_id = ?',
+        whereArgs: [entryId]);
+  }
+
+  /// Dismiss: the draft is deleted (FR-23).
+  static Future<void> deleteReflection(int entryId) async {
+    final db = await database;
+    await db.delete('reflections',
+        where: 'entry_id = ?', whereArgs: [entryId]);
+  }
+
+  /// Saves the user's rating on the phone (FR-24). [sent] says whether the
+  /// server already has it. The rating never includes the entry text.
+  static Future<void> setReflectionRating(
+    int entryId, {
+    required String rating,
+    String? reason,
+    bool sent = false,
+  }) async {
+    final db = await database;
+    await db.update(
+        'reflections',
+        {
+          'rating': rating,
+          'rating_reason': reason,
+          'rating_sent': sent ? 1 : 0,
+        },
+        where: 'entry_id = ?',
+        whereArgs: [entryId]);
+  }
+
+  static Future<void> markRatingSent(int entryId) async {
+    final db = await database;
+    await db.update('reflections', {'rating_sent': 1},
+        where: 'entry_id = ?', whereArgs: [entryId]);
   }
 
   static const String _entrySelect = '''
@@ -231,6 +331,8 @@ class DatabaseService {
          WHERE r.entry_id = e.id ORDER BY r.id DESC LIMIT 1) AS thinking_pattern,
       (SELECT r.reflection_text FROM reflections r
          WHERE r.entry_id = e.id ORDER BY r.id DESC LIMIT 1) AS reflection_text,
+      (SELECT r.status FROM reflections r
+         WHERE r.entry_id = e.id ORDER BY r.id DESC LIMIT 1) AS reflection_status,
       (SELECT group_concat(t.tag, ',') FROM entry_tags t
          WHERE t.entry_id = e.id) AS tags
     FROM journal_entries e

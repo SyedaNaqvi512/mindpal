@@ -28,6 +28,17 @@ class QuickReflectionEngine implements ReflectionEngine {
 
     if (best == null) {
       return const ReflectionResult(
+        parts: ReflectionParts(
+          acknowledgement: thanks,
+          questions: [
+            'What exactly happened, in facts anyone could see?',
+            'What parts of this are things you are assuming?',
+          ],
+          balanced: 'A hard moment is real, and it is not the whole story of '
+              'your day or of you.',
+          nextStep: 'Take a few slow breaths, then choose one small thing you '
+              'can do in the next ten minutes.',
+        ),
         text: '$thanks\n\n'
             'Questions to try:\n'
             '- What exactly happened, in facts anyone could see?\n'
@@ -43,6 +54,14 @@ class QuickReflectionEngine implements ReflectionEngine {
 
     return ReflectionResult(
       pattern: best.id,
+      parts: ReflectionParts(
+        acknowledgement: thanks,
+        pattern: best.id,
+        patternNote: best.explain,
+        questions: best.questions,
+        balanced: best.balanced,
+        nextStep: best.step,
+      ),
       text: '$thanks\n\n'
           'A thinking pattern that might be showing up (only a suggestion): '
           '${best.name}.\n${best.explain}\n\n'
