@@ -22,7 +22,9 @@ class _AppShellState extends State<AppShell> {
   void _openNewEntry() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => NewEntryScreen(onSignedOut: widget.onSignedOut),
+        builder: (_) => NewEntryScreen(
+          onSignedOut: widget.onSignedOut,
+        ),
       ),
     );
   }
@@ -33,20 +35,29 @@ class _AppShellState extends State<AppShell> {
       HomeScreen(
         onNewEntry: _openNewEntry,
         onSeeAll: () => setState(() => _index = 1),
+        onSignedOut: widget.onSignedOut,
       ),
-      const HistoryScreen(),
+      HistoryScreen(
+        onSignedOut: widget.onSignedOut,
+      ),
       const InsightsScreen(),
-      SettingsScreen(onSignedOut: widget.onSignedOut),
+      SettingsScreen(
+        onSignedOut: widget.onSignedOut,
+      ),
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _index, children: pages),
+      body: IndexedStack(
+        index: _index,
+        children: pages,
+      ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'New entry',
         onPressed: _openNewEntry,
         child: const Icon(Symbols.add_rounded),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
@@ -122,7 +133,8 @@ class _NavItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     color: color,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight:
+                        selected ? FontWeight.w700 : FontWeight.w600,
                   ),
                 ),
               ],
