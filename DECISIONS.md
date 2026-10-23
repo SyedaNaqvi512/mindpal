@@ -74,3 +74,15 @@ Quick and on-device reflections have no server record, so their rating stays on 
 **Decision:** PTUT has no counselling or campus-support service we can verify, so the support card
 shows the verified helpline, the emergency-services line and the "trusted person" advice only.
 A campus contact will be added in `support_info.dart` if one is confirmed later. Nothing is invented.
+
+## D-13 Android backup is off for the encrypted journal
+The journal database is encrypted with a key kept in the phone's secure storage. Android cannot
+back that key up, so a restored database file could never be opened. `allowBackup="false"` avoids
+that broken state. Journal text stays only on the device by design, so uninstalling the app removes
+it. A user-controlled export and import is the planned way to move entries to a new phone.
+
+## D-14 Insights are worked out on the phone
+**SRS:** FR-27 to FR-29.
+The calendar, the weekly and monthly trend and the common patterns are calculated from the local
+database. Only the mood number, the date and the pattern name are read; the entry text is not. The
+server is not involved. The week starts on Monday. A day with several entries shows their average mood.
