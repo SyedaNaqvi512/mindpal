@@ -431,7 +431,8 @@ class DatabaseService {
     return db.rawQuery(sql, args);
   }
 
-  /// Gets mood and thinking-pattern data for Insights.
+  /// Mood and thinking pattern of every entry, oldest first, for Insights.
+  /// Only small fields are read, not the journal entry text.
   static Future<List<Map<String, Object?>>> getInsightRows() async {
     final db = await database;
 
@@ -444,7 +445,7 @@ class DatabaseService {
     ''');
   }
 
-  /// Gets one entry with its mood, tags and saved reflection.
+  /// Gets one entry with its mood, tags and saved reflection (FR-16).
   static Future<Map<String, dynamic>?> getEntry(int id) async {
     final db = await database;
 

@@ -83,29 +83,3 @@ Quick and on-device reflections have no server record, so their rating stays on 
 **Decision:** PTUT has no counselling or campus-support service we can verify, so the support card
 shows the verified helpline, the emergency-services line and the "trusted person" advice only.
 A campus contact will be added in `support_info.dart` if one is confirmed later. Nothing is invented.
-
-## D-13 Android backup is off for the encrypted journal
-
-The journal database is encrypted with a key kept in the phone's secure storage. Android cannot
-back that key up, so a restored database file could never be opened. `allowBackup="false"` avoids
-that broken state. Journal text stays only on the device by design, so uninstalling the app removes
-it. A user-controlled export and import is the planned way to move entries to a new phone.
-
-## D-14 Insights are worked out on the phone
-
-**SRS:** FR-27 to FR-29.
-The calendar, the weekly and monthly trend and the common patterns are calculated from the local
-database. Only the mood number, the date and the pattern name are read; the entry text is not. The
-server is not involved. The week starts on Monday. A day with several entries shows their average mood.
-
-## D-15 Account deletion: sign-in blocked at once, data purged within 24 hours
-
-**SRS:** FR-34, NFR-16 (server data removed within 7 days).
-**Decision:** `POST /me/delete` (the user confirms with the password) marks the account
-`pending_deletion`, revokes every refresh token and one-time code, and from that moment the account
-cannot sign in or refresh, and existing access tokens stop working (they are checked against the
-account status on every request). A background job runs every hour and deletes accounts 24 hours
-after the request; the database's ON DELETE CASCADE removes tokens, consents, usage logs, ratings and
-activity days. 24 hours is well inside the 7-day limit. The app then erases the local database, its
-key and the saved settings (the theme is kept). Anonymous counts (safety and exercise events) hold
-no user id and stay.
