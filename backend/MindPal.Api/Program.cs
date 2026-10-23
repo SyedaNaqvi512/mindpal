@@ -21,7 +21,7 @@ builder.Services.AddHttpClient();
 // SMTP email sender (credentials come from User Secrets/environment)
 builder.Services.AddTransient<SmtpEmailSender>();
 
-// Request body limit 20 KB (SRS v1.1)
+// Request body limit: 20 KB (SRS v1.1)
 builder.WebHost.ConfigureKestrel(o =>
     o.Limits.MaxRequestBodySize = 20 * 1024);
 
@@ -30,7 +30,7 @@ builder.Services.AddDbContext<MindPalDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("MindPal")));
 
-// ---- JWT settings (secret must come from User Secrets / environment) ----
+// ---- JWT settings (secret must come from User Secrets/environment) ----
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
           ?? new JwtOptions();
 
@@ -69,6 +69,36 @@ builder.Services.AddAuthentication(
             NameClaimType = "name",
             RoleClaimType = "role"
         };
+
+        // Reject tokens belonging to deleted or suspended accounts.
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                if (!Guid.TryParse(
+                        ctx.Principal?.FindFirst("sub")?.Value,
+                        out var userId))
+                {
+                    ctx.Fail("Invalid token");
+                    return;
+                }
+
+                var db = ctx.HttpContext.RequestServices
+                    .GetRequiredService<MindPalDbContext>();
+
+                var status = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.Status)
+                    .FirstOrDefaultAsync(
+                        ctx.HttpContext.RequestAborted);
+
+                if (!AccountDeletion.CanSignIn(status))
+                {
+                    ctx.Fail("Account is not active");
+                }
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -77,7 +107,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+// Reflection service
 builder.Services.AddScoped<IReflectionEngine, GeminiReflectionEngine>();
+
+// Account deletion background service
+builder.Services.AddHostedService<AccountPurgeService>();
 
 // ---- Rate limiting (SRS v1.1) ----
 builder.Services.AddRateLimiter(o =>
@@ -205,6 +239,7 @@ app.MapGet("/health/ready", async (
 app.MapAuth();
 app.MapConsents();
 app.MapReflection();
+app.MapAccount();
 app.MapFeedback();
 
 app.Run();
