@@ -4,8 +4,10 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/database/database_service.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../applock/services/app_lock_service.dart';
 import '../../auth/services/auth_service.dart';
 import '../../consent/services/consent_service.dart';
+import '../../reminders/services/reminder_service.dart';
 
 /// FR-34: permanently delete the account and clear the data on this phone.
 class DeleteAccountScreen extends ConsumerStatefulWidget {
@@ -38,31 +40,48 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       _busy = true;
       _error = null;
     });
+
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+
     try {
-      final res = await AuthService.instance
-          .authorizedPost('/me/delete', {'password': _password.text});
+      final res = await AuthService.instance.authorizedPost('/me/delete', {
+        'password': _password.text,
+      });
+
       if (res.statusCode != 202 && res.statusCode != 200) {
         throw AuthException(problemMessage(decodeJson(res.body)));
       }
 
       // The server accepted the request. Now clear everything on this phone.
       await DatabaseService.deleteAllLocalData();
+
+      // Disable the app lock and cancel any scheduled reminder.
+      await AppLockService.instance.reset();
+      await ReminderService.instance.clear();
+
       final prefs = ref.read(sharedPreferencesProvider);
       for (final key in prefs.getKeys().toList()) {
-        if (key != ThemeController.prefsKey) await prefs.remove(key);
+        if (key != ThemeController.prefsKey) {
+          await prefs.remove(key);
+        }
       }
+
       ConsentService.instance.clear();
       await AuthService.instance.logout();
 
       navigator.popUntil((r) => r.isFirst);
       widget.onSignedOut();
-      messenger.showSnackBar(const SnackBar(
-        duration: Duration(seconds: 8),
-        content: Text('Your account is scheduled for deletion and your data '
-            'on this phone was cleared. Server data is removed within 7 days.'),
-      ));
+
+      messenger.showSnackBar(
+        const SnackBar(
+          duration: Duration(seconds: 8),
+          content: Text(
+            'Your account is scheduled for deletion and your data '
+            'on this phone was cleared. Server data is removed within 7 days.',
+          ),
+        ),
+      );
     } on SessionExpiredException {
       navigator.popUntil((r) => r.isFirst);
       widget.onSignedOut();
@@ -70,8 +89,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
       if (mounted) {
-        setState(() => _error =
-            'Something went wrong. Nothing was deleted. Please try again.');
+        setState(() {
+          _error =
+              'Something went wrong. Nothing was deleted. Please try again.';
+        });
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -84,15 +105,15 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     final text = Theme.of(context).textTheme;
 
     Widget point(String s) => Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('•  '),
-              Expanded(child: Text(s)),
-            ],
-          ),
-        );
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('•  '),
+          Expanded(child: Text(s)),
+        ],
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Delete account')),
@@ -104,11 +125,17 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             const SizedBox(height: 12),
             Text('This cannot be undone', style: text.titleLarge),
             const SizedBox(height: 12),
-            point('You will be signed out and cannot sign in again with this account.'),
-            point('Your account and the data MindPal keeps on its server are '
-                'removed within 7 days.'),
-            point('Your journal entries, reflections and settings on this phone '
-                'are erased now. They cannot be recovered.'),
+            point(
+              'You will be signed out and cannot sign in again with this account.',
+            ),
+            point(
+              'Your account and the data MindPal keeps on its server are '
+              'removed within 7 days.',
+            ),
+            point(
+              'Your journal entries, reflections and settings on this phone '
+              'are erased now. They cannot be recovered.',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: _password,
@@ -118,9 +145,11 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 labelText: 'Enter your password to confirm',
                 suffixIcon: IconButton(
                   tooltip: _hide ? 'Show password' : 'Hide password',
-                  icon: Icon(_hide
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
+                  icon: Icon(
+                    _hide
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
                   onPressed: () => setState(() => _hide = !_hide),
                 ),
               ),
@@ -130,10 +159,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
               value: _understood,
-              onChanged:
-                  _busy ? null : (v) => setState(() => _understood = v ?? false),
-              title: const Text('I understand my account and entries will be '
-                  'deleted permanently.'),
+              onChanged: _busy
+                  ? null
+                  : (v) => setState(() => _understood = v ?? false),
+              title: const Text(
+                'I understand my account and entries will be '
+                'deleted permanently.',
+              ),
             ),
             if (_error != null)
               Padding(
@@ -152,7 +184,8 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                     ? const SizedBox(
                         width: 22,
                         height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Delete my account'),
               ),
             ),

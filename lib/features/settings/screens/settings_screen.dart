@@ -8,9 +8,11 @@ import '../../account/models/user_profile.dart';
 import '../../account/screens/delete_account_screen.dart';
 import '../../account/screens/profile_screen.dart';
 import '../../account/widgets/avatar_image.dart';
+import '../../applock/widgets/app_lock_settings_tile.dart';
 import '../../auth/services/auth_service.dart';
 import '../../consent/services/consent_service.dart';
 import '../../consent/widgets/consent_sheet.dart';
+import '../../reminders/widgets/reminder_settings_tile.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key, required this.onSignedOut});
@@ -23,8 +25,12 @@ class SettingsScreen extends ConsumerWidget {
     onSignedOut();
   }
 
-  List<Color> _swatches(AppPalette p) =>
-      [p.background, p.primary, p.secondary, p.accent];
+  List<Color> _swatches(AppPalette p) => [
+    p.background,
+    p.primary,
+    p.secondary,
+    p.accent,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -73,6 +79,15 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           const _AiConsentTile(),
           const SizedBox(height: 24),
+
+          // New: app lock and daily reminder settings.
+          Text('Security and reminders', style: text.titleMedium),
+          const SizedBox(height: 8),
+          const AppLockSettingsTile(),
+          const SizedBox(height: 8),
+          const ReminderSettingsTile(),
+          const SizedBox(height: 24),
+
           Text('Account', style: text.titleMedium),
           const SizedBox(height: 8),
           const _ProfileTile(),
@@ -87,14 +102,20 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Card(
             child: ListTile(
-              leading: Icon(Symbols.delete_forever_rounded,
-                  color: Theme.of(context).colorScheme.error),
-              title: Text('Delete account',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              leading: Icon(
+                Symbols.delete_forever_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              title: Text(
+                'Delete account',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
               subtitle: const Text('Remove your account and all your data'),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => DeleteAccountScreen(onSignedOut: onSignedOut),
-              )),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DeleteAccountScreen(onSignedOut: onSignedOut),
+                ),
+              ),
             ),
           ),
         ],
@@ -132,12 +153,15 @@ class _ProfileTileState extends State<_ProfileTile> {
             leading: p == null
                 ? const Icon(Symbols.account_circle_rounded)
                 : AvatarImage(avatarId: p.avatarId, size: 40),
-            title: Text(p?.displayName.isNotEmpty == true ? p!.displayName : 'Profile'),
+            title: Text(
+              p?.displayName.isNotEmpty == true ? p!.displayName : 'Profile',
+            ),
             subtitle: Text(p?.email ?? 'View and edit your profile'),
             trailing: const Icon(Symbols.chevron_right_rounded),
             onTap: () async {
-              await Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              await Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
               if (mounted) setState(() => _future = _load());
             },
           );
@@ -178,8 +202,9 @@ class _AiConsentTileState extends State<_AiConsentTile> {
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _toggle(bool on) async {
@@ -220,7 +245,7 @@ class _AiConsentTileState extends State<_AiConsentTile> {
               subtitle: Text(
                 _granted == true
                     ? 'Entries you reflect on are sent securely to an AI '
-                        'service. Turn off to withdraw permission.'
+                          'service. Turn off to withdraw permission.'
                     : 'Off. Entries are not sent anywhere.',
                 style: TextStyle(color: muted),
               ),
