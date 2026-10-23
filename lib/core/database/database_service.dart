@@ -9,8 +9,7 @@ class DatabaseService {
   static const int _databaseVersion = 4;
   static const String _databaseKeyName = 'mindpal_database_key';
 
-  static final FlutterSecureStorage _secureStorage =
-      FlutterSecureStorage();
+  static final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   static Database? _database;
 
@@ -35,7 +34,6 @@ class DatabaseService {
       password: databaseKey,
       version: _databaseVersion,
       onConfigure: (db) async {
-        // Needed so ON DELETE CASCADE really works.
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: (db, version) async {
@@ -57,13 +55,15 @@ class DatabaseService {
         if (oldVersion < 2) {
           await _createReflectionsTable(db);
         }
+
         if (oldVersion < 3) {
           await db.execute(
-              'ALTER TABLE journal_entries ADD COLUMN updated_at TEXT');
+            'ALTER TABLE journal_entries ADD COLUMN updated_at TEXT',
+          );
           await _createTagsTable(db);
           await _createIndexes(db);
         }
-        // (a database older than version 2 got the full reflections table above)
+
         if (oldVersion >= 2 && oldVersion < 4) {
           await _addReflectionColumns(db);
         }
@@ -95,8 +95,7 @@ class DatabaseService {
     ''');
   }
 
-  /// Version 4: reflection drafts, source label, edits and ratings (FR-22 to FR-24).
-  /// Reflections saved before this version count as accepted.
+  /// Adds version 4 reflection columns.
   static Future<void> _addReflectionColumns(Database db) async {
     for (final sql in const [
       'ALTER TABLE reflections ADD COLUMN parts_json TEXT',
@@ -111,7 +110,7 @@ class DatabaseService {
     }
   }
 
-  /// Feeling tags of an entry (FR-10).
+  /// Creates the feeling tags table.
   static Future<void> _createTagsTable(Database db) async {
     await db.execute('''
       CREATE TABLE entry_tags (
@@ -127,53 +126,67 @@ class DatabaseService {
 
   static Future<void> _createIndexes(Database db) async {
     await db.execute(
-        'CREATE INDEX idx_entries_created ON journal_entries (created_at)');
+      'CREATE INDEX idx_entries_created ON journal_entries (created_at)',
+    );
     await db.execute(
-        'CREATE INDEX idx_reflections_entry ON reflections (entry_id)');
+      'CREATE INDEX idx_reflections_entry ON reflections (entry_id)',
+    );
   }
 
-  /// Gets the database key from secure storage.
-  /// If it does not exist, a new random key is created and stored securely.
+  /// Account deletion: closes and deletes the local database and its key.
+  static Future<void> deleteAllLocalData() async {
+    final path = '${await getDatabasesPath()}/$_databaseName';
+    final db = _database;
+    _database = null;
+
+    if (db != null) {
+      await db.close();
+    }
+
+    await deleteDatabase(path);
+    await _secureStorage.delete(key: _databaseKeyName);
+  }
+
+  /// Gets the existing database key or creates a new random key.
   static Future<String> _getOrCreateDatabaseKey() async {
-    final existingKey = await _secureStorage.read(
-      key: _databaseKeyName,
-    );
+    final existingKey = await _secureStorage.read(key: _databaseKeyName);
 
     if (existingKey != null && existingKey.isNotEmpty) {
       return existingKey;
     }
 
     final random = Random.secure();
-    final keyBytes = List<int>.generate(
-      32,
-      (_) => random.nextInt(256),
-    );
+    final keyBytes = List<int>.generate(32, (_) => random.nextInt(256));
 
     final newKey = base64UrlEncode(keyBytes);
 
-    await _secureStorage.write(
-      key: _databaseKeyName,
-      value: newKey,
-    );
+    await _secureStorage.write(key: _databaseKeyName, value: newKey);
 
     return newKey;
   }
 
   static Future<void> _writeTags(
-      DatabaseExecutor txn, int entryId, List<String> tags) async {
+    DatabaseExecutor txn,
+    int entryId,
+    List<String> tags,
+  ) async {
     await txn.delete('entry_tags', where: 'entry_id = ?', whereArgs: [entryId]);
+
     for (final tag in tags.toSet()) {
       await txn.insert('entry_tags', {'entry_id': entryId, 'tag': tag});
     }
   }
 
-  /// Inserts a journal entry (and its feeling tags) into the encrypted database.
+  /// Inserts a journal entry and its feeling tags.
   static Future<int> insertJournalEntry({
     required String content,
     required int mood,
     List<String> tags = const [],
   }) async {
-    if (mood < 1 || mood > 5) throw ArgumentError('mood must be 1 to 5');
+    if (mood < 1 || mood > 5) {
+      throw ArgumentError('mood must be 1 to 5');
+    }
+
     final db = await database;
 
     return db.transaction((txn) async {
@@ -182,19 +195,23 @@ class DatabaseService {
         'mood': mood,
         'created_at': DateTime.now().toIso8601String(),
       });
+
       await _writeTags(txn, id, tags);
       return id;
     });
   }
 
-  /// Edits the text, mood and tags of an entry (FR-14).
+  /// Edits a journal entry and its tags.
   static Future<void> updateEntry({
     required int id,
     required String content,
     required int mood,
     List<String> tags = const [],
   }) async {
-    if (mood < 1 || mood > 5) throw ArgumentError('mood must be 1 to 5');
+    if (mood < 1 || mood > 5) {
+      throw ArgumentError('mood must be 1 to 5');
+    }
+
     final db = await database;
 
     await db.transaction((txn) async {
@@ -208,6 +225,7 @@ class DatabaseService {
         where: 'id = ?',
         whereArgs: [id],
       );
+
       await _writeTags(txn, id, tags);
     });
   }
@@ -230,8 +248,7 @@ class DatabaseService {
     });
   }
 
-  /// Keeps one reflection per entry: the new one replaces the old one.
-  /// A new reflection starts as a draft until the user decides (FR-23).
+  /// Replaces an entry's reflection with a new reflection.
   static Future<int> replaceReflection({
     required int entryId,
     required String text,
@@ -244,8 +261,12 @@ class DatabaseService {
     final db = await database;
 
     return db.transaction((txn) async {
-      await txn.delete('reflections',
-          where: 'entry_id = ?', whereArgs: [entryId]);
+      await txn.delete(
+        'reflections',
+        where: 'entry_id = ?',
+        whereArgs: [entryId],
+      );
+
       return txn.insert('reflections', {
         'entry_id': entryId,
         'reflection_text': text,
@@ -259,48 +280,58 @@ class DatabaseService {
     });
   }
 
-  /// The reflection of an entry, or null.
+  /// Gets the reflection for an entry, or null.
   static Future<Map<String, dynamic>?> getReflection(int entryId) async {
     final db = await database;
-    final rows = await db.query('reflections',
-        where: 'entry_id = ?',
-        whereArgs: [entryId],
-        orderBy: 'id DESC',
-        limit: 1);
+
+    final rows = await db.query(
+      'reflections',
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+
     return rows.isEmpty ? null : rows.first;
   }
 
-  /// Accept a draft (FR-23).
+  /// Accepts a reflection draft.
   static Future<void> acceptReflection(int entryId) async {
     final db = await database;
-    await db.update('reflections', {'status': 'accepted'},
-        where: 'entry_id = ?', whereArgs: [entryId]);
+
+    await db.update(
+      'reflections',
+      {'status': 'accepted'},
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+    );
   }
 
-  /// Edit the reflection text. The edited text is kept as plain text and accepted.
+  /// Edits the reflection text and accepts it.
   static Future<void> editReflection(int entryId, String text) async {
     final db = await database;
+
     await db.update(
-        'reflections',
-        {
-          'reflection_text': text,
-          'parts_json': null,
-          'edited': 1,
-          'status': 'accepted',
-        },
-        where: 'entry_id = ?',
-        whereArgs: [entryId]);
+      'reflections',
+      {
+        'reflection_text': text,
+        'parts_json': null,
+        'edited': 1,
+        'status': 'accepted',
+      },
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+    );
   }
 
-  /// Dismiss: the draft is deleted (FR-23).
+  /// Deletes a reflection draft.
   static Future<void> deleteReflection(int entryId) async {
     final db = await database;
-    await db.delete('reflections',
-        where: 'entry_id = ?', whereArgs: [entryId]);
+
+    await db.delete('reflections', where: 'entry_id = ?', whereArgs: [entryId]);
   }
 
-  /// Saves the user's rating on the phone (FR-24). [sent] says whether the
-  /// server already has it. The rating never includes the entry text.
+  /// Saves a reflection rating on the phone.
   static Future<void> setReflectionRating(
     int entryId, {
     required String rating,
@@ -308,21 +339,24 @@ class DatabaseService {
     bool sent = false,
   }) async {
     final db = await database;
+
     await db.update(
-        'reflections',
-        {
-          'rating': rating,
-          'rating_reason': reason,
-          'rating_sent': sent ? 1 : 0,
-        },
-        where: 'entry_id = ?',
-        whereArgs: [entryId]);
+      'reflections',
+      {'rating': rating, 'rating_reason': reason, 'rating_sent': sent ? 1 : 0},
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+    );
   }
 
   static Future<void> markRatingSent(int entryId) async {
     final db = await database;
-    await db.update('reflections', {'rating_sent': 1},
-        where: 'entry_id = ?', whereArgs: [entryId]);
+
+    await db.update(
+      'reflections',
+      {'rating_sent': 1},
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+    );
   }
 
   static const String _entrySelect = '''
@@ -338,13 +372,10 @@ class DatabaseService {
     FROM journal_entries e
   ''';
 
-  static String _escapeLike(String s) => s
-      .replaceAll(r'\', r'\\')
-      .replaceAll('%', r'\%')
-      .replaceAll('_', r'\_');
+  static String _escapeLike(String s) =>
+      s.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
 
-  /// FR-15: newest first, with optional keyword, date range and mood filters.
-  /// The keyword matches the entry text and its feeling tags.
+  /// Searches entries with optional keyword, date range and mood filters.
   static Future<List<Map<String, dynamic>>> searchEntries({
     String query = '',
     DateTime? from,
@@ -357,65 +388,91 @@ class DatabaseService {
     final args = <Object?>[];
 
     final q = query.trim();
+
     if (q.isNotEmpty) {
       final like = '%${_escapeLike(q)}%';
-      where.add("(e.content LIKE ? ESCAPE '\\' OR EXISTS ("
-          "SELECT 1 FROM entry_tags t WHERE t.entry_id = e.id "
-          "AND t.tag LIKE ? ESCAPE '\\'))");
+
+      where.add(
+        "(e.content LIKE ? ESCAPE '\\' OR EXISTS ("
+        "SELECT 1 FROM entry_tags t WHERE t.entry_id = e.id "
+        "AND t.tag LIKE ? ESCAPE '\\')",
+      );
+
       args.addAll([like, like]);
     }
+
     if (from != null) {
       where.add('e.created_at >= ?');
       args.add(DateTime(from.year, from.month, from.day).toIso8601String());
     }
+
     if (to != null) {
       where.add('e.created_at < ?');
-      args.add(DateTime(to.year, to.month, to.day)
-          .add(const Duration(days: 1))
-          .toIso8601String());
+      args.add(
+        DateTime(
+          to.year,
+          to.month,
+          to.day,
+        ).add(const Duration(days: 1)).toIso8601String(),
+      );
     }
+
     if (mood != null) {
       where.add('e.mood = ?');
       args.add(mood);
     }
 
-    final sql = '$_entrySelect'
+    final sql =
+        '$_entrySelect'
         '${where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}'}'
         ' ORDER BY e.created_at DESC LIMIT ?';
+
     args.add(limit);
     return db.rawQuery(sql, args);
   }
 
-  /// One entry with its mood, tags and saved reflection (FR-16).
+  /// Gets mood and thinking-pattern data for Insights.
+  static Future<List<Map<String, Object?>>> getInsightRows() async {
+    final db = await database;
+
+    return db.rawQuery('''
+      SELECT e.created_at, e.mood,
+        (SELECT r.thinking_pattern FROM reflections r
+           WHERE r.entry_id = e.id ORDER BY r.id DESC LIMIT 1) AS thinking_pattern
+      FROM journal_entries e
+      ORDER BY e.created_at ASC
+    ''');
+  }
+
+  /// Gets one entry with its mood, tags and saved reflection.
   static Future<Map<String, dynamic>?> getEntry(int id) async {
     final db = await database;
+
     final rows = await db.rawQuery('$_entrySelect WHERE e.id = ?', [id]);
+
     return rows.isEmpty ? null : rows.first;
   }
 
   /// Gets recent journal entries with their associated reflections.
-  static Future<List<Map<String, dynamic>>> getRecentEntries({
-    int limit = 5,
-  }) =>
+  static Future<List<Map<String, dynamic>>> getRecentEntries({int limit = 5}) =>
       searchEntries(limit: limit);
 
   /// Reads all journal entries from the encrypted database.
   static Future<List<Map<String, dynamic>>> getJournalEntries() async {
     final db = await database;
 
-    return db.query(
-      'journal_entries',
-      orderBy: 'created_at DESC',
-    );
+    return db.query('journal_entries', orderBy: 'created_at DESC');
   }
 
-  /// Deletes a journal entry and everything attached to it (FR-14).
+  /// Deletes a journal entry and everything attached to it.
   static Future<void> deleteJournalEntry(int id) async {
     final db = await database;
 
     await db.transaction((txn) async {
       await txn.delete('reflections', where: 'entry_id = ?', whereArgs: [id]);
+
       await txn.delete('entry_tags', where: 'entry_id = ?', whereArgs: [id]);
+
       await txn.delete('journal_entries', where: 'id = ?', whereArgs: [id]);
     });
   }

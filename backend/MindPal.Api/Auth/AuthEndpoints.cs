@@ -877,6 +877,15 @@ public static class AuthEndpoints
                 "This account is suspended");
         }
 
+        // Reject accounts that are pending deletion.
+        if (user.Status == AccountDeletion.PendingStatus)
+        {
+            return Problem(
+                403,
+                "account_pending_deletion",
+                "This account is being deleted");
+        }
+
         user.FailedLoginCount = 0;
         user.LockedUntil = null;
         user.UpdatedAt = now;
@@ -948,8 +957,9 @@ public static class AuthEndpoints
         var user = await db.Users
             .FirstOrDefaultAsync(u => u.Id == stored.UserId, ct);
 
+        // Reject refresh requests for accounts that cannot sign in.
         if (user is null ||
-            user.Status == "suspended" ||
+            !AccountDeletion.CanSignIn(user.Status) ||
             !user.EmailVerified)
         {
             stored.RevokedAt = now;

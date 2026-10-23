@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../account/models/user_profile.dart';
+import '../../account/screens/delete_account_screen.dart';
 import '../../account/screens/profile_screen.dart';
 import '../../account/widgets/avatar_image.dart';
 import '../../auth/services/auth_service.dart';
@@ -81,6 +82,19 @@ class SettingsScreen extends ConsumerWidget {
               leading: const Icon(Symbols.logout_rounded),
               title: const Text('Sign out'),
               onTap: _signOut,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: Icon(Symbols.delete_forever_rounded,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text('Delete account',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              subtitle: const Text('Remove your account and all your data'),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => DeleteAccountScreen(onSignedOut: onSignedOut),
+              )),
             ),
           ),
         ],
