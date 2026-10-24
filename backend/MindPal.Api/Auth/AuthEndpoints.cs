@@ -207,7 +207,7 @@ public static class AuthEndpoints
     private static async Task<bool> SendNewVerificationCodeAsync(
         User user,
         MindPalDbContext db,
-        SmtpEmailSender emailSender,
+        IEmailSender emailSender,
         CancellationToken ct)
     {
         var now = DateTime.UtcNow;
@@ -267,7 +267,7 @@ public static class AuthEndpoints
     private static async Task<IResult> Register(
         RegisterRequest req,
         MindPalDbContext db,
-        SmtpEmailSender emailSender,
+        IEmailSender emailSender,
         CancellationToken ct)
     {
         var errors = new Dictionary<string, string[]>();
@@ -488,7 +488,7 @@ public static class AuthEndpoints
     private static async Task<IResult> ResendVerification(
         ResendVerificationRequest req,
         MindPalDbContext db,
-        SmtpEmailSender emailSender,
+        IEmailSender emailSender,
         CancellationToken ct)
     {
         var email = req.Email?.Trim().ToLowerInvariant() ?? "";
@@ -558,7 +558,7 @@ public static class AuthEndpoints
     private static async Task<IResult> ForgotPassword(
         ForgotPasswordRequest req,
         MindPalDbContext db,
-        SmtpEmailSender emailSender,
+        IEmailSender emailSender,
         CancellationToken ct)
     {
         var email = req.Email?.Trim().ToLowerInvariant() ?? "";

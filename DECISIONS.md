@@ -117,3 +117,7 @@ The app lock is a screen lock: a 4-digit PIN with optional fingerprint (local_au
 ## D-17 Daily reminder (FR-30)
 
 The reminder is a local notification (flutter_local_notifications) with fixed, non-sensitive text, scheduled with inexact allow-while-idle timing, so no exact-alarm permission is needed. It may arrive a few minutes late on some phones. It is re-scheduled on every app start and after a reboot. Nothing about it is sent to the server.
+
+## D-18 Email delivery through Brevo's HTTPS API
+
+Verification and password-reset codes go through an `IEmailSender`. In deployment the sender is `BrevoEmailSender`, which calls Brevo's HTTPS API, as SRS section 2.7 requires, because the free web host blocks SMTP ports. `SmtpEmailSender` (Gmail) remains for local development only and is chosen with `Email:Provider` (default `Smtp`, deployment sets `Brevo`). Only the recipient address, display name and the message text are sent (TB-D); the code is never logged. Known limit of the free beta: mail sent from a Gmail address as sender may reach the spam folder, because Gmail's policy distrusts mail from its addresses sent by other servers. Reliable delivery needs a sender on a domain owned by the project with SPF/DKIM set up; this is planned before real users.
