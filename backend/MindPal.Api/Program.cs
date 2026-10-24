@@ -18,8 +18,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
 
-// SMTP email sender (credentials come from User Secrets/environment)
-builder.Services.AddTransient<SmtpEmailSender>();
+// Email: Brevo HTTPS API when Email:Provider is "Brevo" (deployment),
+// Gmail SMTP otherwise (local development). Secrets come from User Secrets
+// or environment variables.
+if (string.Equals(builder.Configuration["Email:Provider"], "Brevo",
+        StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<IEmailSender, BrevoEmailSender>(
+        c => c.Timeout = TimeSpan.FromSeconds(15));
+}
+else
+{
+    builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
+}
 
 // Request body limit: 20 KB (SRS v1.1)
 builder.WebHost.ConfigureKestrel(o =>
