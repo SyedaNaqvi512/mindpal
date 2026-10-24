@@ -83,3 +83,7 @@ Quick and on-device reflections have no server record, so their rating stays on 
 **Decision:** PTUT has no counselling or campus-support service we can verify, so the support card
 shows the verified helpline, the emergency-services line and the "trusted person" advice only.
 A campus contact will be added in `support_info.dart` if one is confirmed later. Nothing is invented.
+
+
+## D-18 Email delivery through Brevo's HTTPS API
+Verification and password-reset codes go through an `IEmailSender`. In deployment the sender is `BrevoEmailSender`, which calls Brevo's HTTPS API, as SRS section 2.7 requires, because the free web host blocks SMTP ports. `SmtpEmailSender` (Gmail) remains for local development only and is chosen with `Email:Provider` (default `Smtp`, deployment sets `Brevo`). Only the recipient address, display name and the message text are sent (TB-D); the code is never logged. Known limit of the free beta: mail sent from a Gmail address as sender may reach the spam folder, because Gmail's policy distrusts mail from its addresses sent by other servers. Reliable delivery needs a sender on a domain owned by the project with SPF/DKIM set up; this is planned before real users.
