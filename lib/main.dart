@@ -7,7 +7,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_palette.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
+import 'features/applock/screens/app_lock_gate.dart';
+import 'features/applock/services/app_lock_service.dart';
 import 'features/auth/screens/auth_gate.dart';
+import 'features/reminders/services/reminder_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,13 +18,17 @@ Future<void> main() async {
   const token = String.fromEnvironment('HUGGINGFACE_TOKEN');
 
   await FlutterEdgeAi.initialize(
-    inferenceEngines: const [
-      MediaPipeEngine(),
-    ],
+    inferenceEngines: const [MediaPipeEngine()],
     huggingFaceToken: token.isNotEmpty ? token : null,
   );
 
   final prefs = await SharedPreferences.getInstance();
+
+  // Load the saved app-lock configuration before showing the app.
+  await AppLockService.instance.load();
+
+  // Initialize daily reminders without delaying app startup.
+  ReminderService.instance.init();
 
   runApp(
     ProviderScope(
@@ -55,6 +62,8 @@ class MindPalApp extends ConsumerWidget {
       theme: AppTheme.build(lightPalette),
       darkTheme: AppTheme.build(AppPalette.midnightLavender),
       themeMode: mode,
+      builder: (context, child) =>
+          AppLockGate(child: child ?? const SizedBox.shrink()),
       home: const AuthGate(),
     );
   }
