@@ -93,29 +93,37 @@ class MoodCalendar extends StatelessWidget {
                 ),
           ],
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 10,
-          runSpacing: 4,
-          alignment: WrapAlignment.center,
+        const SizedBox(height: 12),
+        // Five equal columns: emoji over its word, so nothing wraps unevenly.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final m in Mood.all)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: MoodColors.byLevel[m.value - 1],
-                      shape: BoxShape.circle,
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: MoodColors.byLevel[m.value - 1],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(m.emoji, style: const TextStyle(fontSize: 14)),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text('${m.emoji} ${m.label}',
+                    const SizedBox(height: 4),
+                    Text(
+                      m.label,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontSize: 11, color: scheme.onSurfaceVariant)),
-                ],
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),

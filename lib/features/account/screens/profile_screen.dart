@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/widgets/busy_button.dart';
+import '../../../core/widgets/inline_message.dart';
 import '../../auth/services/auth_service.dart';
+import '../services/profile_store.dart';
 import '../models/avatars.dart';
 import '../models/user_profile.dart';
 import '../widgets/avatar_image.dart';
@@ -61,8 +64,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _save() async {
     final name = _name.text.trim();
-    if (name.isEmpty || name.length > 50) {
-      setState(() => _error = 'Name must be 1 to 50 characters.');
+    if (name.isEmpty || name.length > 40) {
+      setState(() => _error = 'Name must be 1 to 40 characters.');
       return;
     }
     setState(() {
@@ -74,6 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         displayName: name,
         avatarId: _avatar,
       );
+      ProfileStore.instance.set(p);
       if (!mounted) return;
       setState(() {
         _profile = p;
@@ -117,22 +121,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    Center(child: AvatarImage(avatarId: _avatar ?? p.avatarId, size: 112)),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [scheme.primary, scheme.secondary],
+                          ),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration:
+                              BoxDecoration(shape: BoxShape.circle, color: scheme.surface),
+                          child: AvatarImage(avatarId: _avatar ?? p.avatarId, size: 120),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(p.email, style: TextStyle(color: scheme.onSurfaceVariant)),
+                    ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: _name,
                       textCapitalization: TextCapitalization.words,
-                      maxLength: 50,
+                      maxLength: 40,
                       onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(labelText: 'Display name'),
                     ),
                     const SizedBox(height: 12),
-                    Text('Choose your picture', style: text.titleMedium),
+                    Text('Choose a picture', style: text.titleMedium),
                     const SizedBox(height: 4),
                     Text(
-                      p.gender == Gender.unspecified
-                          ? 'All pictures are available.'
-                          : 'Pictures for ${Gender.label(p.gender).toLowerCase()} profiles.',
+                      'Tap a picture to choose it.',
                       style: TextStyle(color: scheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 12),
@@ -159,7 +183,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     width: 3,
                                   ),
                                 ),
-                                child: AvatarImage(avatarId: id, size: 64),
+                                child: Stack(
+                                  children: [
+                                    AvatarImage(avatarId: id, size: 64),
+                                    if (_avatar == id)
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 22,
+                                          height: 22,
+                                          decoration: BoxDecoration(
+                                            color: scheme.primary,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: scheme.surface, width: 2),
+                                          ),
+                                          child: Icon(Symbols.check_rounded,
+                                              size: 14, color: scheme.onPrimary),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -169,19 +213,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(_error!, style: TextStyle(color: scheme.error)),
+                        child: InlineMessage(_error!),
                       ),
-                    SizedBox(
-                      height: 52,
-                      child: FilledButton(
-                        onPressed: (_dirty && !_saving) ? _save : null,
-                        child: _saving
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Save changes'),
-                      ),
+                    BusyButton(
+                      label: 'Save changes',
+                      busy: _saving,
+                      onPressed: (_dirty && !_saving) ? _save : null,
                     ),
                     const SizedBox(height: 24),
                     Text('Account', style: text.titleMedium),

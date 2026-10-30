@@ -4,6 +4,7 @@ import 'package:flutter_edge_ai_mediapipe/flutter_edge_ai_mediapipe.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/motion/motion.dart';
 import 'core/theme/app_palette.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
   );
 
   final prefs = await SharedPreferences.getInstance();
+  Motion.load(prefs);
 
   // Load the saved app-lock configuration before showing the app.
   await AppLockService.instance.load();

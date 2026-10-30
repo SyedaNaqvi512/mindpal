@@ -82,3 +82,48 @@ List<DateTime?> monthGrid(DateTime month) {
     for (var d = 1; d <= days; d++) DateTime(month.year, month.month, d),
   ];
 }
+
+/// How many days in a row, ending today, have at least one entry.
+/// If today has no entry yet, a streak that ended yesterday still counts.
+int currentStreak(Map<DateTime, DayMood> byDay, DateTime today) {
+  var day = dateOnly(today);
+  if (!byDay.containsKey(day)) {
+    day = DateTime(day.year, day.month, day.day - 1);
+  }
+  var count = 0;
+  while (byDay.containsKey(day)) {
+    count++;
+    day = DateTime(day.year, day.month, day.day - 1);
+  }
+  return count;
+}
+
+/// The last seven days ending on [today], for the Home "your week" card.
+class WeekSummary {
+  const WeekSummary({
+    required this.days,
+    required this.entries,
+    required this.average,
+    required this.daysWritten,
+  });
+
+  /// Average mood per day, oldest first (7 values, null = no entry).
+  final List<double?> days;
+  final int entries;
+  final double? average;
+  final int daysWritten;
+}
+
+WeekSummary weekSummary(Map<DateTime, DayMood> byDay, DateTime today) {
+  final series = dailySeries(byDay, dateOnly(today), 7);
+  var entries = 0;
+  for (var i = 0; i < 7; i++) {
+    entries += byDay[DateTime(today.year, today.month, today.day - 6 + i)]?.count ?? 0;
+  }
+  return WeekSummary(
+    days: series,
+    entries: entries,
+    average: seriesAverage(series),
+    daysWritten: series.whereType<double>().length,
+  );
+}

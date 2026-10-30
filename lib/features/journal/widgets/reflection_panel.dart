@@ -3,6 +3,8 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/widgets/fade_slide_in.dart';
 import '../../auth/services/auth_service.dart';
 import '../models/thinking_patterns.dart';
 import '../services/reflection_engine.dart';
@@ -213,10 +215,14 @@ class _ReflectionPanelState extends State<ReflectionPanel> {
     final r = _r;
 
     if (r == null) {
-      return Text(
-        'No reflection saved for this entry. You can add one with '
-        'Save and reflect.',
-        style: TextStyle(color: scheme.onSurfaceVariant),
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'No reflection saved for this entry. You can add one with Save & reflect.',
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
+        ),
       );
     }
 
@@ -225,150 +231,281 @@ class _ReflectionPanelState extends State<ReflectionPanel> {
     final parts = edited ? null : ReflectionParts.decode(r['parts_json'] as String?);
     final rating = r['rating'] as String?;
 
-    Widget section(String title, Widget body) => Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: text.labelLarge?.copyWith(color: scheme.primary)),
-              const SizedBox(height: 4),
-              body,
-            ],
-          ),
-        );
-
-    Widget structured(ReflectionParts p) {
-      final name = ThinkingPatterns.nameOf(p.pattern);
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SelectableText(p.acknowledgement),
-          if (name != null)
-            section(
-              'A pattern that might be showing up',
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    // One soft block with a colored bar on the left; blocks fade in one by one.
+    Widget block({
+      required int index,
+      required Color bar,
+      required IconData icon,
+      required String title,
+      required Widget body,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: FadeSlideIn(
+          delay: Duration(milliseconds: 160 * index),
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(name,
-                      style: text.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                  if (p.patternNote != null) SelectableText(p.patternNote!),
-                  const SizedBox(height: 4),
-                  Text(
-                    'This is only a suggestion, not a diagnosis.',
-                    style: muted,
+                  Container(width: 6, color: bar),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(icon, size: 18, color: scheme.primary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(title,
+                                    style: text.labelLarge?.copyWith(color: scheme.primary)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          body,
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-          if (p.questions.isNotEmpty)
-            section(
-              'Questions to try',
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final q in p.questions)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: SelectableText('• $q'),
-                    ),
-                ],
-              ),
-            ),
-          if (p.balanced.isNotEmpty)
-            section('A more balanced thought', SelectableText(p.balanced)),
-          if (p.nextStep.isNotEmpty)
-            section('One small next step', SelectableText(p.nextStep)),
-        ],
+          ),
+        ),
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    List<Widget> structured(ReflectionParts p) {
+      final name = ThinkingPatterns.nameOf(p.pattern);
+      var i = 0;
+      return [
+        block(
+          index: i++,
+          bar: MoodColors.peach,
+          icon: Symbols.favorite_rounded,
+          title: 'Acknowledgement',
+          body: SelectableText(p.acknowledgement),
+        ),
+        if (name != null)
+          block(
+            index: i++,
+            bar: MoodColors.rose,
+            icon: Symbols.psychology_alt_rounded,
+            title: 'A pattern that might be showing up',
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: Text('Reflection', style: text.titleMedium)),
-                Chip(
-                  label: Text(draft ? 'Draft' : (edited ? 'Edited' : 'Saved')),
-                  visualDensity: VisualDensity.compact,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: scheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSecondaryContainer,
+                      )),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            if (parts != null)
-              structured(parts)
-            else
-              SelectableText(r['reflection_text'] as String),
-            const SizedBox(height: 12),
-            Text(_label(r['source'] as String?), style: muted),
-            const SizedBox(height: 12),
-            if (draft)
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  FilledButton.icon(
-                    onPressed: _accept,
-                    icon: const Icon(Symbols.check_rounded),
-                    label: const Text('Accept'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _edit,
-                    icon: const Icon(Symbols.edit_rounded),
-                    label: const Text('Edit'),
-                  ),
-                  TextButton(onPressed: _dismiss, child: const Text('Dismiss')),
+                if (p.patternNote != null) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(p.patternNote!),
                 ],
-              )
-            else
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _edit,
-                  icon: const Icon(Symbols.edit_rounded),
-                  label: const Text('Edit'),
-                ),
-              ),
-            if (draft)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                    'This draft is kept on your phone until you decide.',
-                    style: muted),
-              ),
-            const Divider(height: 24),
-            Row(
-              children: [
-                Expanded(child: Text('Was this helpful?', style: muted)),
-                IconButton(
-                  tooltip: 'Helpful',
-                  isSelected: rating == 'helpful',
-                  icon: const Icon(Symbols.thumb_up_rounded),
-                  selectedIcon: Icon(Symbols.thumb_up_rounded,
-                      fill: 1, color: scheme.primary),
-                  onPressed: () => _rate('helpful'),
-                ),
-                IconButton(
-                  tooltip: 'Not helpful',
-                  isSelected: rating == 'not_helpful',
-                  icon: const Icon(Symbols.thumb_down_rounded),
-                  selectedIcon: Icon(Symbols.thumb_down_rounded,
-                      fill: 1, color: scheme.primary),
-                  onPressed: () => _rate('not_helpful'),
-                ),
+                const SizedBox(height: 6),
+                Text('This is only a suggestion, not a diagnosis.', style: muted),
               ],
             ),
-            if (rating == 'not_helpful' && r['rating_reason'] != null)
-              Text('Reason: ${_reasons[r['rating_reason']] ?? r['rating_reason']}',
-                  style: muted),
+          ),
+        if (p.questions.isNotEmpty)
+          block(
+            index: i++,
+            bar: MoodColors.sky,
+            icon: Symbols.help_rounded,
+            title: 'Questions to try',
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final q in p.questions)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: SelectableText('• $q'),
+                  ),
+              ],
+            ),
+          ),
+        if (p.balanced.isNotEmpty)
+          block(
+            index: i++,
+            bar: MoodColors.sage,
+            icon: Symbols.balance_rounded,
+            title: 'A more balanced thought',
+            body: SelectableText(p.balanced),
+          ),
+        if (p.nextStep.isNotEmpty)
+          block(
+            index: i++,
+            bar: MoodColors.butter,
+            icon: Symbols.flag_rounded,
+            title: 'One small next step',
+            body: SelectableText(p.nextStep),
+          ),
+      ];
+    }
+
+    ButtonStyle rateStyle(bool selected) => OutlinedButton.styleFrom(
+          backgroundColor: selected ? scheme.primaryContainer : null,
+          side: BorderSide(color: selected ? scheme.primary : scheme.outline),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Support, not therapy: always visible (FR-22).
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Symbols.info_rounded, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _label(r['source'] as String?),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.primary,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: draft ? scheme.tertiaryContainer : scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  draft ? 'Draft' : (edited ? 'Edited' : 'Saved'),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+        KeyedSubtree(
+          key: ValueKey('reflection-${widget.version}-${widget.entryId}'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: parts != null
+                ? structured(parts)
+                : [
+                    block(
+                      index: 0,
+                      bar: MoodColors.peach,
+                      icon: Symbols.psychology_alt_rounded,
+                      title: edited ? 'Your edited reflection' : 'Reflection',
+                      body: SelectableText(r['reflection_text'] as String),
+                    ),
+                  ],
+          ),
+        ),
+        if (draft)
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              FilledButton.icon(
+                onPressed: _accept,
+                icon: const Icon(Symbols.check_rounded),
+                label: const Text('Accept'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _edit,
+                icon: const Icon(Symbols.edit_rounded),
+                label: const Text('Edit'),
+              ),
+              TextButton(onPressed: _dismiss, child: const Text('Dismiss')),
+            ],
+          )
+        else
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _edit,
+              icon: const Icon(Symbols.edit_rounded),
+              label: const Text('Edit'),
+            ),
+          ),
+        if (draft)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('This draft is kept on your phone until you decide.', style: muted),
+          ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Was this reflection helpful?', style: text.titleSmall),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: rateStyle(rating == 'helpful'),
+                        onPressed: () => _rate('helpful'),
+                        icon: Icon(Symbols.thumb_up_rounded,
+                            size: 18, fill: rating == 'helpful' ? 1 : 0),
+                        label: const Text('Helpful'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: rateStyle(rating == 'not_helpful'),
+                        onPressed: () => _rate('not_helpful'),
+                        icon: Icon(Symbols.thumb_down_rounded,
+                            size: 18, fill: rating == 'not_helpful' ? 1 : 0),
+                        label: const Text('Not helpful'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'If not helpful, you can pick a reason. Your entry text is never sent.',
+                  style: muted,
+                ),
+                if (rating == 'not_helpful' && r['rating_reason'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Reason: ${_reasons[r['rating_reason']] ?? r['rating_reason']}',
+                      style: muted,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(Symbols.lock_rounded, size: 14, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text('Saved with your entry, encrypted on this phone.', style: muted),
+            ),
           ],
         ),
-      ),
+      ],
     );
   }
 }

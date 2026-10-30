@@ -3,6 +3,8 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/widgets/fade_slide_in.dart';
 import '../models/entry_format.dart';
 import '../models/mood.dart';
 import '../widgets/reflection_panel.dart';
@@ -74,6 +76,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('Cancel')),
           FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error,
+                foregroundColor: Theme.of(ctx).colorScheme.onError,
+              ),
               onPressed: () => Navigator.of(ctx).pop(true),
               child: const Text('Delete')),
         ],
@@ -123,50 +129,94 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           : row == null
               ? const Center(child: Text('This entry no longer exists.'))
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                   children: [
-                    Row(
-                      children: [
-                        Text(Mood.byValue(row['mood'] as int?).emoji,
-                            style: const TextStyle(fontSize: 40)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    FadeSlideIn(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
                             children: [
-                              Text(Mood.byValue(row['mood'] as int?).label,
-                                  style: text.titleMedium),
-                              Text(
-                                formatEntryDateTime(row['created_at'] as String) +
-                                    (row['updated_at'] != null ? ' · edited' : ''),
-                                style: TextStyle(color: scheme.onSurfaceVariant),
+                              Container(
+                                width: 64,
+                                height: 64,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: MoodColors
+                                      .byLevel[Mood.byValue(row['mood'] as int?).value - 1],
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(Mood.byValue(row['mood'] as int?).emoji,
+                                    style: const TextStyle(fontSize: 34)),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(Mood.byValue(row['mood'] as int?).label,
+                                        style: text.titleLarge),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      formatEntryDateTime(row['created_at'] as String) +
+                                          (row['updated_at'] != null ? ' · edited' : ''),
+                                      style: TextStyle(color: scheme.onSurfaceVariant),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                     if (FeelingTags.parse(row['tags']).isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
-                        runSpacing: 4,
+                        runSpacing: 6,
                         children: [
                           for (final t in FeelingTags.parse(row['tags']))
-                            Chip(label: Text(t)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: scheme.secondaryContainer,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                t,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    SelectableText(row['content'] as String,
-                        style: text.bodyLarge),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 80),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: SelectableText(
+                              row['content'] as String,
+                              style: text.bodyLarge?.copyWith(height: 1.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     ReflectionPanel(entryId: widget.entryId, version: _panelVersion),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     Text(
                       'MindPal is a reflection tool, not a therapist or medical advice.',
-                      style: TextStyle(
-                          fontSize: 12, color: scheme.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),
