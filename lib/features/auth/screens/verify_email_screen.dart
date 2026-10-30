@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/auth_scaffold.dart';
+import '../../../core/widgets/busy_button.dart';
+import '../../../core/widgets/inline_message.dart';
 import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
@@ -95,79 +99,45 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Verify your email')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Check your inbox',
-                      style: text.headlineSmall, textAlign: TextAlign.center),
-                  const SizedBox(height: 8),
-                  Text('We sent a 6-digit code to\n${widget.email}',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: scheme.onSurfaceVariant)),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _code,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    maxLength: 6,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: text.headlineMedium?.copyWith(letterSpacing: 10),
-                    decoration: const InputDecoration(
-                        counterText: '', hintText: '000000'),
-                    onChanged: (v) {
-                      if (v.length == 6 && !_busy) _verify();
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(_error!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: scheme.error)),
-                    ),
-                  if (_info != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(_info!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: scheme.primary)),
-                    ),
-                  SizedBox(
-                    height: 52,
-                    child: FilledButton(
-                      onPressed: _busy ? null : _verify,
-                      child: _busy
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Verify'),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: _left == 0 && !_busy ? _resend : null,
-                    child: Text(_left == 0
-                        ? 'Send a new code'
-                        : 'Send a new code in ${_left}s'),
-                  ),
-                  Text('The code expires in 10 minutes. Check spam if you do not see it.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: scheme.onSurfaceVariant)),
-                ],
-              ),
-            ),
+    return AuthScaffold(
+      title: 'Check your inbox',
+      subtitle: 'We sent a 6-digit code to\n${widget.email}',
+      footer: Text(
+        'The code expires in 10 minutes. Check spam if you do not see it.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _code,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: 6,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: text.headlineMedium?.copyWith(letterSpacing: 10),
+            decoration: const InputDecoration(counterText: '', hintText: '000000'),
+            onChanged: (v) {
+              if (v.length == 6 && !_busy) _verify();
+            },
           ),
-        ),
+          const SizedBox(height: 12),
+          if (_error != null) ...[
+            InlineMessage(_error!),
+            const SizedBox(height: 12),
+          ],
+          if (_info != null) ...[
+            InlineMessage(_info!, isError: false),
+            const SizedBox(height: 12),
+          ],
+          BusyButton(label: 'Verify', busy: _busy, onPressed: _verify),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _left == 0 && !_busy ? _resend : null,
+            child: Text(_left == 0 ? 'Send a new code' : 'Send a new code in ${_left}s'),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_shell.dart';
+import '../../../core/widgets/logo_mark.dart';
+import '../../account/services/profile_store.dart';
 import '../../onboarding/screens/onboarding_screen.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
@@ -36,10 +38,13 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_signedIn == null || _seenOnboarding == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: LogoMark(size: 88)));
     }
     if (_signedIn!) {
-      return AppShell(onSignedOut: () => setState(() => _signedIn = false));
+      return AppShell(onSignedOut: () {
+        ProfileStore.instance.clear();
+        setState(() => _signedIn = false);
+      });
     }
     if (!_seenOnboarding!) {
       return OnboardingScreen(onDone: () => setState(() => _seenOnboarding = true));

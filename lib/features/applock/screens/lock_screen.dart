@@ -1,6 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/motion/motion.dart';
+import '../../../core/widgets/logo_mark.dart';
 import '../models/app_lock_logic.dart';
 import '../services/app_lock_service.dart';
 import '../widgets/lockout_notice.dart';
@@ -124,9 +128,14 @@ class _LockScreenState extends State<LockScreen> {
         body = Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Symbols.lock_rounded, size: 40, color: scheme.primary),
-            const SizedBox(height: 12),
+            const LogoMark(size: 64),
+            const SizedBox(height: 16),
             Text('Enter your PIN', style: text.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'Your journal is locked',
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 8),
             SizedBox(
               height: 44,
@@ -142,18 +151,24 @@ class _LockScreenState extends State<LockScreen> {
                       style: TextStyle(color: scheme.error),
                     ),
             ),
-            PinKeypad(
-              key: ValueKey(_k),
-              length: AppLockService.pinLength,
-              enabled: _wait == null,
-              onComplete: _onPin,
-              bottomLeft: _svc.biometricEnabled
-                  ? IconButton(
-                      tooltip: 'Use fingerprint',
-                      onPressed: _fingerprint,
-                      icon: const Icon(Symbols.fingerprint_rounded, size: 32),
-                    )
-                  : null,
+            _Shake(
+              trigger: _k,
+              child: PinKeypad(
+                key: ValueKey(_k),
+                length: AppLockService.pinLength,
+                enabled: _wait == null,
+                onComplete: _onPin,
+                bottomLeft: _svc.biometricEnabled
+                    ? IconButton(
+                        onPressed: _fingerprint,
+                        icon: const Icon(
+                          Symbols.fingerprint_rounded,
+                          size: 32,
+                          semanticLabel: 'Use fingerprint',
+                        ),
+                      )
+                    : null,
+              ),
             ),
             const SizedBox(height: 12),
             TextButton(
@@ -242,6 +257,53 @@ class _LockScreenState extends State<LockScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shakes its child sideways each time [trigger] goes up (a wrong PIN).
+class _Shake extends StatefulWidget {
+  const _Shake({required this.trigger, required this.child});
+
+  final int trigger;
+  final Widget child;
+
+  @override
+  State<_Shake> createState() => _ShakeState();
+}
+
+class _ShakeState extends State<_Shake> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  @override
+  void didUpdateWidget(_Shake old) {
+    super.didUpdateWidget(old);
+    if (widget.trigger != old.trigger && !Motion.reduced(context)) {
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(
+          math.sin(_c.value * math.pi * 5) * 12 * (1 - _c.value),
+          0,
+        ),
+        child: child,
       ),
     );
   }

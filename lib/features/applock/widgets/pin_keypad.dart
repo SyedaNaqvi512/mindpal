@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/motion/motion.dart';
+
 /// Four dots and a number pad. Change the widget's key to clear it.
 class PinKeypad extends StatefulWidget {
   const PinKeypad({
@@ -51,7 +53,12 @@ class _PinKeypadState extends State<PinKeypad> {
         label: semantics ?? label,
         child: ExcludeSemantics(
           child: InkResponse(
-            onTap: widget.enabled ? onTap : null,
+            onTap: widget.enabled
+                ? () {
+                    Motion.tap();
+                    onTap?.call();
+                  }
+                : null,
             radius: 40,
             child: Container(
               width: 68,
@@ -59,7 +66,7 @@ class _PinKeypadState extends State<PinKeypad> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: scheme.surfaceContainerHighest,
+                color: scheme.primaryContainer,
               ),
               child:
                   child ??

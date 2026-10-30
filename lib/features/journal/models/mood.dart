@@ -53,4 +53,17 @@ class StarterPrompts {
     'Something I found difficult today was …',
     'If a friend felt this way, I would tell them …',
   ];
+
+  /// One prompt per calendar day: the same all day, a new one tomorrow.
+  static String forDay(DateTime d) {
+    final dayOfYear =
+        DateTime(d.year, d.month, d.day).difference(DateTime(d.year, 1, 1)).inDays;
+    return all[(d.year + dayOfYear) % all.length];
+  }
+
+  /// The text to start the writing box with: the prompt up to its "…".
+  static String asStart(String prompt) {
+    final i = prompt.indexOf('…');
+    return i < 0 ? prompt : prompt.substring(0, i);
+  }
 }
