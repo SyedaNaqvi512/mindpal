@@ -5,6 +5,7 @@ import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/fade_slide_in.dart';
+import '../../exercises/widgets/entry_exercises_section.dart';
 import '../models/entry_format.dart';
 import '../models/mood.dart';
 import '../widgets/reflection_panel.dart';
@@ -212,6 +213,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                     ),
                     const SizedBox(height: 20),
                     ReflectionPanel(entryId: widget.entryId, version: _panelVersion),
+                    EntryExercisesSection(entryId: widget.entryId),
                     const SizedBox(height: 20),
                     Text(
                       'MindPal is a reflection tool, not a therapist or medical advice.',

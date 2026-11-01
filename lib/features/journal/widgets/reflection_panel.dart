@@ -6,6 +6,7 @@ import '../../../core/entries_changes.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../auth/services/auth_service.dart';
+import '../../exercises/widgets/suggested_exercise_card.dart';
 import '../models/thinking_patterns.dart';
 import '../services/reflection_engine.dart';
 
@@ -495,6 +496,11 @@ class _ReflectionPanelState extends State<ReflectionPanel> {
             ),
           ),
         ),
+        if (!draft)
+          SuggestedExerciseCard(
+            entryId: widget.entryId,
+            patternId: r['thinking_pattern'] as String?,
+          ),
         const SizedBox(height: 8),
         Row(
           children: [

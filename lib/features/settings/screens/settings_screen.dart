@@ -17,6 +17,7 @@ import '../../account/widgets/avatar_image.dart';
 import '../../applock/widgets/app_lock_settings_tile.dart';
 import '../../auth/services/auth_service.dart';
 import '../../consent/services/consent_service.dart';
+import '../../exercises/screens/exercise_progress_screen.dart';
 import '../../consent/widgets/consent_sheet.dart';
 import '../../reminders/widgets/reminder_settings_tile.dart';
 import '../../safety/support_info.dart';
@@ -179,6 +180,14 @@ class SettingsScreen extends ConsumerWidget {
             icon: Symbols.privacy_tip_rounded,
             title: 'Privacy summary',
             onTap: () => _privacy(context),
+          ),
+          const SizedBox(height: 8),
+          _NavTile(
+            icon: Symbols.self_improvement_rounded,
+            title: 'Exercise answers',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ExerciseProgressScreen()),
+            ),
           ),
           const _SectionLabel('Notifications'),
           const ReminderSettingsTile(),

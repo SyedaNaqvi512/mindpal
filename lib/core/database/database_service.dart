@@ -6,7 +6,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 
 class DatabaseService {
   static const String _databaseName = 'mindpal.db';
-  static const int _databaseVersion = 4;
+  static const int _databaseVersion = 5;
   static const String _databaseKeyName = 'mindpal_database_key';
 
   static final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
@@ -50,6 +50,7 @@ class DatabaseService {
         await _createReflectionsTable(db);
         await _createTagsTable(db);
         await _createIndexes(db);
+        await _createExerciseTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -66,6 +67,10 @@ class DatabaseService {
 
         if (oldVersion >= 2 && oldVersion < 4) {
           await _addReflectionColumns(db);
+        }
+
+        if (oldVersion < 5) {
+          await _createExerciseTable(db);
         }
       },
     );
@@ -93,6 +98,38 @@ class DatabaseService {
           ON DELETE CASCADE
       )
     ''');
+  }
+
+  /// Creates the exercise sessions table (SRS 3.5). Answers are stored in this
+  /// encrypted database and are removed with an entry or with the account.
+  static Future<void> _createExerciseTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS exercise_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        exercise_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        entry_id INTEGER,
+        data_json TEXT NOT NULL,
+        balanced_thought TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        FOREIGN KEY (entry_id)
+          REFERENCES journal_entries (id)
+          ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_exercise_status ON exercise_sessions (status, updated_at)',
+    );
+  }
+
+  /// Makes sure the exercise table exists. The normal upgrade does this, but a
+  /// database that stayed open across a hot restart is not upgraded, so the
+  /// exercise code calls this before it reads or writes.
+  static Future<void> ensureExerciseTable() async {
+    final db = await database;
+    await _createExerciseTable(db);
   }
 
   /// Adds version 4 reflection columns.
