@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/search_text.dart';
 import '../../../core/theme/app_palette.dart';
 import '../models/entry_format.dart';
 import '../models/mood.dart';
@@ -18,6 +19,7 @@ class EntryTile extends StatelessWidget {
     this.selected = false,
     this.onToggleSelect,
     this.onLongPress,
+    this.highlight = const [],
   });
 
   final Map<String, dynamic> row;
@@ -32,9 +34,43 @@ class EntryTile extends StatelessWidget {
   final VoidCallback? onToggleSelect;
   final VoidCallback? onLongPress;
 
+  /// Words to mark in the entry text (History search).
+  final List<String> highlight;
+
   String _pattern(Object? p) {
     final s = p as String?;
     return (s == null || s == 'none') ? '' : s.replaceAll('_', ' ');
+  }
+
+  /// The first lines of the entry. When a search is active the found words are
+  /// marked, and the text starts near the first match so it is visible.
+  Widget _content(BuildContext context, String content) {
+    const base = TextStyle(fontWeight: FontWeight.w600);
+    if (highlight.isEmpty) {
+      return Text(content, maxLines: 2, overflow: TextOverflow.ellipsis, style: base);
+    }
+    final scheme = Theme.of(context).colorScheme;
+    final shown = searchSnippet(content, highlight);
+    final ranges = matchRanges(shown, highlight);
+    final mark = base.copyWith(
+      backgroundColor: scheme.tertiaryContainer,
+      color: scheme.onTertiaryContainer,
+    );
+
+    final spans = <TextSpan>[];
+    var at = 0;
+    for (final r in ranges) {
+      if (r.start > at) spans.add(TextSpan(text: shown.substring(at, r.start)));
+      spans.add(TextSpan(text: shown.substring(r.start, r.end), style: mark));
+      at = r.end;
+    }
+    if (at < shown.length) spans.add(TextSpan(text: shown.substring(at)));
+
+    return Text.rich(
+      TextSpan(style: base, children: spans),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 
   @override
@@ -109,12 +145,7 @@ class EntryTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      row['content'] as String,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                    _content(context, row['content'] as String),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,

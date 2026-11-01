@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
+import '../search_text.dart';
+
 class DatabaseService {
   static const String _databaseName = 'mindpal.db';
   static const int _databaseVersion = 5;
@@ -424,18 +426,21 @@ class DatabaseService {
     final where = <String>[];
     final args = <Object?>[];
 
-    final q = query.trim();
-
-    if (q.isNotEmpty) {
-      final like = '%${_escapeLike(q)}%';
+    // Every word typed must be found (any order, any case) in the entry text,
+    // in one of its feeling tags, or in the name of its thinking pattern.
+    for (final word in splitSearchWords(query)) {
+      final like = '%${_escapeLike(word)}%';
+      final patternLike = '%${_escapeLike(word.replaceAll(RegExp(r'[\s-]+'), '_'))}%';
 
       where.add(
-        "(e.content LIKE ? ESCAPE '\\' OR EXISTS ("
-        "SELECT 1 FROM entry_tags t WHERE t.entry_id = e.id "
-        "AND t.tag LIKE ? ESCAPE '\\')",
+        "(e.content LIKE ? ESCAPE '\\' "
+        "OR EXISTS (SELECT 1 FROM entry_tags t WHERE t.entry_id = e.id "
+        "AND t.tag LIKE ? ESCAPE '\\') "
+        "OR EXISTS (SELECT 1 FROM reflections r WHERE r.entry_id = e.id "
+        "AND r.thinking_pattern LIKE ? ESCAPE '\\'))",
       );
 
-      args.addAll([like, like]);
+      args.addAll([like, like, patternLike]);
     }
 
     if (from != null) {
