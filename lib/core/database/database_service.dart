@@ -477,4 +477,18 @@ class DatabaseService {
       await txn.delete('journal_entries', where: 'id = ?', whereArgs: [id]);
     });
   }
+
+  /// Deletes several journal entries and everything attached to them in one
+  /// transaction (batch delete in History).
+  static Future<void> deleteJournalEntries(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await database;
+    final marks = List.filled(ids.length, '?').join(',');
+
+    await db.transaction((txn) async {
+      await txn.delete('reflections', where: 'entry_id IN ($marks)', whereArgs: ids);
+      await txn.delete('entry_tags', where: 'entry_id IN ($marks)', whereArgs: ids);
+      await txn.delete('journal_entries', where: 'id IN ($marks)', whereArgs: ids);
+    });
+  }
 }

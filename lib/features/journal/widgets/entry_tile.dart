@@ -14,6 +14,10 @@ class EntryTile extends StatelessWidget {
     required this.row,
     required this.onSignedOut,
     this.showDate = true,
+    this.selecting = false,
+    this.selected = false,
+    this.onToggleSelect,
+    this.onLongPress,
   });
 
   final Map<String, dynamic> row;
@@ -21,6 +25,12 @@ class EntryTile extends StatelessWidget {
 
   /// Show the date before the time. History groups by day and turns this off.
   final bool showDate;
+
+  /// Select mode (History batch operations): a tap ticks the entry instead of opening it.
+  final bool selecting;
+  final bool selected;
+  final VoidCallback? onToggleSelect;
+  final VoidCallback? onLongPress;
 
   String _pattern(Object? p) {
     final s = p as String?;
@@ -47,15 +57,39 @@ class EntryTile extends StatelessWidget {
 
     return Card(
       clipBehavior: Clip.antiAlias,
+      color: selected ? scheme.primaryContainer : null,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => EntryDetailScreen(entryId: row['id'] as int, onSignedOut: onSignedOut),
-        )),
+        onLongPress: onLongPress,
+        onTap: selecting
+            ? onToggleSelect
+            : () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) =>
+                      EntryDetailScreen(entryId: row['id'] as int, onSignedOut: onSignedOut),
+                )),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (selecting)
+                Semantics(
+                  label: selected ? 'Selected' : 'Not selected',
+                  excludeSemantics: true,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? scheme.primary : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: scheme.primary, width: 2),
+                    ),
+                    child: selected
+                        ? Icon(Symbols.check_rounded, color: scheme.onPrimary)
+                        : null,
+                  ),
+                )
+              else
               Semantics(
                 label: '${mood.label} mood',
                 excludeSemantics: true,
@@ -104,11 +138,12 @@ class EntryTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, top: 10),
-                child: Icon(Symbols.chevron_right_rounded,
-                    size: 20, color: scheme.onSurfaceVariant),
-              ),
+              if (!selecting)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, top: 10),
+                  child: Icon(Symbols.chevron_right_rounded,
+                      size: 20, color: scheme.onSurfaceVariant),
+                ),
             ],
           ),
         ),
