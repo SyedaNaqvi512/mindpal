@@ -8,6 +8,7 @@ import '../../../core/entries_changes.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../insights/models/insights_calc.dart';
 import '../models/entry_format.dart';
+import '../models/entry_selection.dart';
 import '../models/mood.dart';
 import '../widgets/entry_tile.dart';
 
@@ -29,6 +30,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   int? _mood;
   DateTimeRange? _range;
   int _loadId = 0;
+  final _selection = EntrySelection();
 
   bool get _filtering =>
       _search.text.trim().isNotEmpty || _mood != null || _range != null;
@@ -53,6 +55,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       setState(() {
         _rows = rows;
         _loaded = true;
+        _selection.keepOnly(rows.map((r) => r['id'] as int));
       });
     } catch (_) {
       if (mounted && id == _loadId) setState(() => _loaded = true);
@@ -116,6 +119,42 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
+  List<int> get _visibleIds => _rows.map((r) => r['id'] as int).toList();
+
+  /// Batch delete: the ticked entries leave the list at once and Undo brings them
+  /// all back. They are deleted from the encrypted database only after the
+  /// snackbar closes without Undo (same rule as a single swipe).
+  void _deleteSelected() {
+    final ids = _selection.ids.toList();
+    if (ids.isEmpty) return;
+    setState(() {
+      _rows = _rows.where((r) => !ids.contains(r['id'])).toList();
+      _selection.clear();
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger
+        .showSnackBar(
+          SnackBar(
+            content: Text(ids.length == 1 ? '1 entry deleted' : '${ids.length} entries deleted'),
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(label: 'Undo', onPressed: () {}),
+          ),
+        )
+        .closed
+        .then((reason) async {
+      if (reason == SnackBarClosedReason.action) {
+        if (mounted) _load();
+        return;
+      }
+      try {
+        await DatabaseService.deleteJournalEntries(ids);
+      } catch (_) {}
+      entriesChanged.value++;
+    });
+  }
+
   @override
   void dispose() {
     entriesChanged.removeListener(_load);
@@ -148,8 +187,46 @@ class _HistoryScreenState extends State<HistoryScreen> {
       items.add(row);
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('History')),
+    final selecting = _selection.isActive;
+
+    return PopScope(
+      canPop: !selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(_selection.clear);
+      },
+      child: Scaffold(
+      appBar: selecting
+          ? AppBar(
+              leading: IconButton(
+                tooltip: 'Cancel selection',
+                icon: const Icon(Symbols.close_rounded),
+                onPressed: () => setState(_selection.clear),
+              ),
+              title: Text('${_selection.count} selected'),
+              actions: [
+                IconButton(
+                  tooltip: _selection.allSelected(_visibleIds)
+                      ? 'Deselect all'
+                      : 'Select all',
+                  icon: Icon(_selection.allSelected(_visibleIds)
+                      ? Symbols.deselect_rounded
+                      : Symbols.select_all_rounded),
+                  onPressed: () => setState(() {
+                    if (_selection.allSelected(_visibleIds)) {
+                      _selection.clear();
+                    } else {
+                      _selection.selectAll(_visibleIds);
+                    }
+                  }),
+                ),
+                IconButton(
+                  tooltip: 'Delete selected',
+                  icon: const Icon(Symbols.delete_rounded),
+                  onPressed: _deleteSelected,
+                ),
+              ],
+            )
+          : AppBar(title: const Text('History')),
       body: Column(
         children: [
           Padding(
@@ -246,6 +323,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             );
                           }
                           final row = item as Map<String, dynamic>;
+                          final rowId = row['id'] as int;
+                          final tile = EntryTile(
+                            row: row,
+                            showDate: false,
+                            onSignedOut: widget.onSignedOut,
+                            selecting: selecting,
+                            selected: _selection.contains(rowId),
+                            onToggleSelect: () => setState(() => _selection.toggle(rowId)),
+                            onLongPress: () => setState(() => _selection.toggle(rowId)),
+                          );
+                          if (selecting) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: tile,
+                            );
+                          }
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Dismissible(
@@ -272,17 +365,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 ),
                               ),
                               onDismissed: (_) => _removeWithUndo(row),
-                              child: EntryTile(
-                                row: row,
-                                showDate: false,
-                                onSignedOut: widget.onSignedOut,
-                              ),
+                              child: tile,
                             ),
                           );
                         },
                       ),
           ),
         ],
+      ),
       ),
     );
   }
