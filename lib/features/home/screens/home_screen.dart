@@ -16,6 +16,7 @@ import '../../account/widgets/avatar_image.dart';
 import '../../insights/models/insights_calc.dart';
 import '../../journal/models/entry_format.dart';
 import '../../journal/models/mood.dart';
+import '../../exercises/screens/exercise_library_screen.dart';
 import '../../journal/widgets/entry_tile.dart';
 
 typedef NewEntryCallback = void Function({int? mood, String? text});
@@ -150,6 +151,38 @@ class _HomeScreenState extends State<HomeScreen> {
                                   )),
                               const SizedBox(height: 2),
                               Text(prompt, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                        Icon(Symbols.chevron_right_rounded, color: scheme.primary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 210),
+              child: Card(
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ExerciseLibraryScreen()),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Symbols.self_improvement_rounded, color: scheme.primary),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Exercises', style: TextStyle(fontWeight: FontWeight.w700)),
+                              SizedBox(height: 2),
+                              Text('Short guided activities: sort, weigh, slide, breathe'),
                             ],
                           ),
                         ),
