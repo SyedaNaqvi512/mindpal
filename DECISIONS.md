@@ -132,3 +132,9 @@ Verification and password-reset codes go through an `IEmailSender`. In deploymen
 **Prefill (FR-47):** an exercise opened from an entry asks "Use the words from your journal entry?" and only copies the text if the user taps Use it.
 **Balanced thought (FR-48):** the thought-based exercises end with an optional balanced-thought step; it is saved with the exercise and shown under "Exercises for this entry" on the entry.
 **Reduce motion (FR-53):** the breathing bubble stays still and only its words change, the scale does not animate, and the timer bars are hidden. Every function still works.
+
+## D-20 History search and token cleanup
+
+**SRS:** FR-15 (search and filtering), NFR-16 (data kept no longer than needed).
+**Search:** the text typed in History is split into words. An entry matches only if every word is found, in any order and ignoring case, in the entry text, in one of its feeling tags, or in the name of its thinking pattern (for example "all-or-nothing" finds the pattern all_or_nothing). The found words are marked in the list and the list starts near the first match when it is far into a long entry. The result count is shown. The mood and date filters can be combined with the words. All of this runs on the phone against the encrypted database. An earlier version of the query had a missing bracket and failed whenever a word was typed; this is fixed.
+**Cleanup job:** `TokenCleanupService` runs every 6 hours and deletes refresh tokens and e-mail codes that expired more than one day ago. A token is kept until it expires so reuse of a revoked token is still noticed. Users do not see this job.

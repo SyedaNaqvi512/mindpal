@@ -124,6 +124,9 @@ builder.Services.AddScoped<IReflectionEngine, GeminiReflectionEngine>();
 // Account deletion background service
 builder.Services.AddHostedService<AccountPurgeService>();
 
+// Housekeeping: removes expired sign-in tokens and e-mail codes
+builder.Services.AddHostedService<TokenCleanupService>();
+
 // ---- Rate limiting (SRS v1.1) ----
 builder.Services.AddRateLimiter(o =>
 {

@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
+import '../../../core/search_text.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../insights/models/insights_calc.dart';
 import '../models/entry_format.dart';
@@ -188,6 +189,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     final selecting = _selection.isActive;
+    final words = splitSearchWords(_search.text);
 
     return PopScope(
       canPop: !selecting,
@@ -236,7 +238,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               onChanged: _onSearchChanged,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Search your entries',
+                hintText: 'Search words, feelings or patterns',
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: pillBorder(scheme.outline, 1),
                 enabledBorder: pillBorder(scheme.outline, 1),
@@ -285,6 +287,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ],
             ),
           ),
+          if (_filtering && _loaded && _rows.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _rows.length == 1 ? '1 entry found' : '${_rows.length} entries found',
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ),
           Expanded(
             child: !_loaded
                 ? const Center(child: CircularProgressIndicator())
@@ -327,6 +340,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           final tile = EntryTile(
                             row: row,
                             showDate: false,
+                            highlight: words,
                             onSignedOut: widget.onSignedOut,
                             selecting: selecting,
                             selected: _selection.contains(rowId),
