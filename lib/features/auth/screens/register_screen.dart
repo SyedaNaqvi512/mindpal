@@ -125,9 +125,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             PasswordChecklist(password: _password.text),
             const SizedBox(height: 20),
             Text('Gender', style: text.titleSmall),
-            const SizedBox(height: 4),
-            Text('Used only to suggest profile pictures.',
-                style: TextStyle(color: scheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
