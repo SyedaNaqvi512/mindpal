@@ -6,6 +6,7 @@ import '../../../core/entries_changes.dart';
 import '../../../core/motion/motion.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/auth_scaffold.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../../core/widgets/mood_face.dart';
@@ -93,14 +94,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final now = DateTime.now();
     final prompt = StarterPrompts.forDay(now);
 
+    final top = MediaQuery.of(context).padding.top;
+
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, AppTokens.space24),
-          children: [
-            FadeSlideIn(child: _Header(greeting: greetingForHour(now.hour))),
-            const SizedBox(height: 16),
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          BrandHeader(
+            padding: EdgeInsets.fromLTRB(20, top + 14, 20, 56),
+            child: _Hero(
+              greeting: greetingForHour(now.hour),
+              streak: _streak,
+              weekEntries: _week?.entries ?? 0,
+            ),
+          ),
+          // The cards are moved up so the first one overlaps the header.
+          Transform.translate(
+            offset: const Offset(0, -34),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, AppTokens.space24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             FadeSlideIn(
               delay: const Duration(milliseconds: 60),
               child: Card(
@@ -137,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Icon(Symbols.lightbulb_rounded, color: scheme.primary),
+                        _Badge(icon: Symbols.lightbulb_rounded),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -174,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Icon(Symbols.self_improvement_rounded, color: scheme.primary),
+                        _Badge(icon: Symbols.self_improvement_rounded),
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Column(
@@ -227,52 +242,130 @@ class _HomeScreenState extends State<HomeScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
-          ],
-        ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.greeting});
+const _monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+  'September', 'October', 'November', 'December',
+];
+const _weekdayNames = [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+];
+
+class _Hero extends StatelessWidget {
+  const _Hero({
+    required this.greeting,
+    required this.streak,
+    required this.weekEntries,
+  });
 
   final String greeting;
+  final int streak;
+  final int weekEntries;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final now = DateTime.now();
+    final date =
+        '${_weekdayNames[now.weekday - 1]}, ${now.day} ${_monthNames[now.month - 1]}';
+
+    Widget pill(IconData icon, String label) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: scheme.onPrimary.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: scheme.onPrimary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onPrimary,
+                ),
+              ),
+            ],
+          ),
+        );
 
     return ValueListenableBuilder<UserProfile?>(
       valueListenable: ProfileStore.instance.profile,
       builder: (context, profile, _) {
         final name = profile?.displayName.trim() ?? '';
-        return Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (profile != null)
-              AvatarImage(avatarId: profile.avatarId, size: 52)
-            else
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(color: scheme.primaryContainer, shape: BoxShape.circle),
-                child: Icon(Symbols.account_circle_rounded, color: scheme.primary),
-              ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(greeting, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14)),
-                  Text(
-                    name.isEmpty ? 'Welcome' : name,
-                    style: text.headlineSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: scheme.onPrimary.withValues(alpha: 0.30),
                   ),
-                ],
-              ),
+                  child: profile != null
+                      ? AvatarImage(avatarId: profile.avatarId, size: 54)
+                      : Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                              color: scheme.primaryContainer, shape: BoxShape.circle),
+                          child: Icon(Symbols.account_circle_rounded,
+                              color: scheme.primary),
+                        ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        greeting,
+                        style: TextStyle(
+                          color: scheme.onPrimary.withValues(alpha: 0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        name.isEmpty ? 'Welcome' : name,
+                        style: text.headlineSmall?.copyWith(
+                          color: scheme.onPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                pill(Symbols.calendar_today_rounded, date),
+                if (streak > 0)
+                  pill(Symbols.local_fire_department_rounded,
+                      '$streak day${streak == 1 ? '' : 's'} streak'),
+                pill(Symbols.edit_note_rounded,
+                    '$weekEntries this week'),
+              ],
             ),
           ],
         );
@@ -406,6 +499,28 @@ class _DayDot extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A rounded square holding a round icon, used at the start of action cards.
+class _Badge extends StatelessWidget {
+  const _Badge({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.12)),
+      ),
+      child: Icon(icon, color: scheme.primary),
     );
   }
 }

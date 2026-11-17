@@ -98,8 +98,8 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: surface,
-        elevation: 1.5,
-        shadowColor: p.primary.withValues(alpha: 0.22),
+        elevation: 3,
+        shadowColor: p.primary.withValues(alpha: 0.20),
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
@@ -111,7 +111,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: p.primary,
           foregroundColor: p.onPrimary,
-          minimumSize: minButton,
+          minimumSize: const Size(AppTokens.minTouch, 52),
           shape: pill,
           padding: const EdgeInsets.symmetric(horizontal: AppTokens.space24),
           textStyle: textTheme.labelLarge,

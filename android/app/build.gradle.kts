@@ -1,4 +1,3 @@
-
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -33,6 +32,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // The encrypted database (SQLCipher) is loaded through native code,
+            // and code shrinking (R8) breaks it in release builds, so keep it off.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
