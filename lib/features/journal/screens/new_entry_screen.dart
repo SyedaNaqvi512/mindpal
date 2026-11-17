@@ -69,6 +69,11 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   bool _opening = false;
   bool _speechReady = false;
   bool _listening = false;
+  // True while the person wants dictation on. Android ends a listening
+  // session after a short pause, so a session that ends by itself is restarted
+  // (a few times) until the person taps the mic again.
+  bool _wantListening = false;
+  int _restarts = 0;
   String _dictationBase = '';
   int? _mood;
   final Set<String> _tags = {};
@@ -125,6 +130,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
 
   Future<void> _toggleMic() async {
     if (_listening) {
+      _wantListening = false;
       await _speech.stop();
       if (mounted) setState(() => _listening = false);
       return;
@@ -132,13 +138,25 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     if (!_speechReady) {
       try {
         _speechReady = await _speech.initialize(
-          onError: (_) {
+          onError: (e) {
+            // "No speech" and "no match" only end the session; it is restarted
+            // below. Any other error (permission, service) stops dictation.
+            final m = e.errorMsg;
+            if (m == 'error_no_match' || m == 'error_speech_timeout') return;
+            _wantListening = false;
             if (mounted) setState(() => _listening = false);
           },
-          onStatus: (s) {
-            if (mounted && (s == 'done' || s == 'notListening')) {
-              setState(() => _listening = false);
+          onStatus: (st) {
+            if (!mounted || (st != 'done' && st != 'notListening')) return;
+            if (_wantListening && _restarts < 8) {
+              _restarts++;
+              Future.delayed(const Duration(milliseconds: 250), () {
+                if (mounted && _wantListening) _startListen();
+              });
+              return;
             }
+            _wantListening = false;
+            setState(() => _listening = false);
           },
         );
       } catch (_) {
@@ -158,11 +176,17 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     }
     if (!mounted) return;
 
-    _dictationBase = _controller.text.trimRight();
+    _wantListening = true;
+    _restarts = 0;
     setState(() {
       _listening = true;
       _notice = null;
     });
+    await _startListen();
+  }
+
+  Future<void> _startListen() async {
+    _dictationBase = _controller.text.trimRight();
     await _speech.listen(
       onResult: (r) {
         if (!mounted) return;
@@ -184,6 +208,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   }
 
   Future<void> _stopMic() async {
+    _wantListening = false;
     if (_listening) {
       await _speech.stop();
       if (mounted) setState(() => _listening = false);
