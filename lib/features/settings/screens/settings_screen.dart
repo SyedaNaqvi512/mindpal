@@ -77,16 +77,54 @@ class SettingsScreen extends ConsumerWidget {
       ]);
 
   void _about(BuildContext context) => _showSheet(context, 'About MindPal', [
-        const Center(child: LogoMark(size: 72)),
+        const Center(child: LogoMark(size: 76)),
+        const SizedBox(height: 12),
+        Center(
+          child: Text('MindPal',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w800)),
+        ),
+        Center(
+          child: Text(
+            'Your calm space for daily reflection',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ),
         const SizedBox(height: 16),
-        _para('MindPal is a calm place to write down how your day felt and to '
-            'notice your thoughts a little better, with gentle CBT-style '
-            'reflections.'),
-        _para('It is a final-year project at Punjab Tianjin University of '
-            'Technology, Lahore.'),
-        _para('MindPal is not a therapist or medical advice. If you are '
-            'struggling, please talk to someone you trust or a mental health '
-            'service.'),
+        _para('MindPal is an AI-assisted mood journal. It helps you write down '
+            'how your day felt, notice unhelpful thinking patterns, and try a '
+            'kinder point of view with gentle CBT-style reflections.'),
+        const _AboutHeading('What you can do'),
+        const _AboutFeature(Symbols.edit_note_rounded, 'Write a daily journal and track your mood'),
+        const _AboutFeature(Symbols.psychology_alt_rounded, 'Get a CBT-style reflection on your thoughts'),
+        const _AboutFeature(Symbols.self_improvement_rounded, 'Try guided exercises, from breathing to thought sorting'),
+        const _AboutFeature(Symbols.insights_rounded, 'Search your history and see mood patterns over time'),
+        const _AboutFeature(Symbols.lock_rounded, 'Keep entries private, encrypted on your phone'),
+        const _AboutHeading('Important'),
+        _para('MindPal is a self-help tool. It is not therapy, a diagnosis or '
+            'medical advice. If you are struggling, please talk to someone you '
+            'trust or a mental health service.'),
+        const _AboutHeading('Built at'),
+        const _AboutLogoCard(
+          asset: 'assets/brand/ptut_logo.png',
+          title: 'Punjab Tianjin University of Technology',
+          body: 'Lahore, Pakistan. Final-year project, BS Software '
+              'Engineering Technology.',
+        ),
+        const SizedBox(height: 10),
+        const _AboutLogoCard(
+          asset: 'assets/brand/astc_logo.png',
+          title: 'Academic Support & Training Center (ASTC)',
+          body: 'ASTC offers hands-on technical training and modern project '
+              'labs at PTUT, where students build practical skills, write real '
+              'code and gain job-ready experience.',
+        ),
+        const _AboutHeading('Project team'),
+        const _AboutFact('Developer', 'Syeda Malaika Fatima (24-ST-063)'),
+        const _AboutFact('Advisor', 'Dr. Zaigham Mushtaq'),
+        const _AboutFact('Project ID', 'PTUT-PRJ-056'),
       ]);
 
   void _help(BuildContext context) => _showSheet(context, 'Help & support', [
@@ -568,6 +606,164 @@ class _ThemeTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A logo with a title and a short description, used on the About sheet.
+class _AboutLogoCard extends StatelessWidget {
+  const _AboutLogoCard({
+    required this.asset,
+    required this.title,
+    required this.body,
+  });
+
+  final String asset;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // White tile, so the logo reads the same in every theme.
+          Container(
+            width: 60,
+            height: 60,
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Image.asset(
+              asset,
+              fit: BoxFit.contain,
+              semanticLabel: title,
+              errorBuilder: (_, _, _) =>
+                  Icon(Symbols.school_rounded, color: scheme.primary),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutHeading extends StatelessWidget {
+  const _AboutHeading(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 8),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          letterSpacing: 1.1,
+          fontWeight: FontWeight.w800,
+          color: scheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutFeature extends StatelessWidget {
+  const _AboutFeature(this.icon, this.text);
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: scheme.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text(text, style: const TextStyle(height: 1.3)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutFact extends StatelessWidget {
+  const _AboutFact(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 88,
+            child: Text(label,
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          ),
+        ],
       ),
     );
   }

@@ -70,6 +70,8 @@ dev_dependencies:
 flutter:
   assets:
     - assets/avatars/
+    - assets/brand/ptut_logo.png
+    - assets/brand/astc_logo.png
 
   # Include Material Design icons.
   uses-material-design: true
