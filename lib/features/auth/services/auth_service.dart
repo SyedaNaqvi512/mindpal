@@ -75,7 +75,10 @@ class AuthService {
   static const _network =
       'Could not reach MindPal. Check your connection and try again.';
 
-  static final FlutterSecureStorage _storage = FlutterSecureStorage();
+  // resetOnError: false, so a read error never wipes the other stored secrets.
+  static const FlutterSecureStorage _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: false),
+  );
   final http.Client _client = http.Client();
   String? _access;
 

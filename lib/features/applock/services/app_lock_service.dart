@@ -37,7 +37,9 @@ class AppLockService extends ChangeNotifier {
   static const _kRecFails = 'applock_rec_fails';
   static const _kRecLock = 'applock_rec_lock';
 
-  final FlutterSecureStorage _s = FlutterSecureStorage();
+  final FlutterSecureStorage _s = const FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: false),
+  );
   final LocalAuthentication _auth = LocalAuthentication();
 
   bool _enabled = false;
