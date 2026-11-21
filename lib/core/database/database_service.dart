@@ -11,18 +11,31 @@ class DatabaseService {
   static const int _databaseVersion = 5;
   static const String _databaseKeyName = 'mindpal_database_key';
 
-  static final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  // resetOnError: false. With the default (true), one failed read of secure
+  // storage erases the saved database key for good, and the encrypted journal
+  // on the phone can never be opened again.
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: false),
+  );
 
   static Database? _database;
+  static Future<Database>? _opening;
 
-  /// Returns the database instance.
+  /// Returns the database instance. Callers that arrive while it is opening
+  /// share the same open, so the key is never created twice.
   static Future<Database> get database async {
-    if (_database != null) {
-      return _database!;
+    final open = _database;
+    if (open != null) {
+      return open;
     }
 
-    _database = await _openDatabase();
-    return _database!;
+    final opening = _opening ??= _openDatabase();
+    try {
+      _database = await opening;
+      return _database!;
+    } finally {
+      _opening = null;
+    }
   }
 
   /// Opens the encrypted MindPal database.
@@ -31,6 +44,23 @@ class DatabaseService {
     final databasesPath = await getDatabasesPath();
     final databasePath = '$databasesPath/$_databaseName';
 
+    try {
+      return await _open(databasePath, databaseKey);
+    } catch (e) {
+      // "file is not a database": the file on the phone was encrypted with a
+      // different key than the one in secure storage, so it can never be read.
+      // Start a fresh database instead of failing every save.
+      final m = e.toString().toLowerCase();
+      final unreadable = m.contains('file is not a database') ||
+          m.contains('code 26') ||
+          m.contains('notadatabase');
+      if (!unreadable) rethrow;
+      await deleteDatabase(databasePath);
+      return _open(databasePath, databaseKey);
+    }
+  }
+
+  static Future<Database> _open(String databasePath, String databaseKey) {
     return openDatabase(
       databasePath,
       password: databaseKey,
@@ -188,7 +218,18 @@ class DatabaseService {
 
   /// Gets the existing database key or creates a new random key.
   static Future<String> _getOrCreateDatabaseKey() async {
-    final existingKey = await _secureStorage.read(key: _databaseKeyName);
+    // A failed read must never lead to a new key: that would orphan the
+    // existing journal. Try a few times, then stop with the error.
+    String? existingKey;
+    for (var attempt = 0;; attempt++) {
+      try {
+        existingKey = await _secureStorage.read(key: _databaseKeyName);
+        break;
+      } catch (_) {
+        if (attempt >= 3) rethrow;
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+      }
+    }
 
     if (existingKey != null && existingKey.isNotEmpty) {
       return existingKey;
@@ -200,6 +241,12 @@ class DatabaseService {
     final newKey = base64UrlEncode(keyBytes);
 
     await _secureStorage.write(key: _databaseKeyName, value: newKey);
+
+    // Use the key only if it was really saved.
+    final saved = await _secureStorage.read(key: _databaseKeyName);
+    if (saved != newKey) {
+      throw StateError('The database key could not be saved.');
+    }
 
     return newKey;
   }
