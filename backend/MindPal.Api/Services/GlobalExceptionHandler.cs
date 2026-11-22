@@ -27,6 +27,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         {
             status = 500; code = "server_error"; title = "Something went wrong";
             logger.LogError(ex, "Unhandled exception on {Path}", ctx.Request.Path);
+            ErrorCounter.Record();
         }
 
         ctx.Response.StatusCode = status;
