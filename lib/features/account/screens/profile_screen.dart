@@ -9,6 +9,7 @@ import '../models/avatars.dart';
 import '../models/user_profile.dart';
 import '../widgets/avatar_image.dart';
 import 'change_password_screen.dart';
+import '../../../core/widgets/toast.dart';
 
 /// FR-07 and FR-08: view/edit name, pick an avatar, see email, change password.
 class ProfileScreen extends StatefulWidget {
@@ -84,8 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _name.text = p.displayName;
         _avatar = p.avatarId;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Profile saved.')));
+      Toast.of(context, 'Profile saved.', kind: ToastKind.success);
     } on AuthException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {

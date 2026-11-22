@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/services/auth_service.dart';
 import '../models/password_rules.dart';
 import '../widgets/password_checklist.dart';
+import '../../../core/widgets/toast.dart';
 
 /// FR-08: change password. Other devices are signed out by the server.
 class ChangePasswordScreen extends StatefulWidget {
@@ -38,8 +39,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       await AuthService.instance.changePassword(_current.text, _new.text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Password changed. Other devices were signed out.')));
+      Toast.of(context, 'Password changed. Other devices were signed out.',
+          kind: ToastKind.success);
       Navigator.of(context).pop();
     } on AuthException catch (e) {
       if (mounted) setState(() => _error = e.message);

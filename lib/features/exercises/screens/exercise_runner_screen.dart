@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -9,6 +10,8 @@ import '../models/exercise_session.dart';
 import '../services/exercise_controller.dart';
 import '../services/exercise_repository.dart';
 import '../widgets/breathing_bubble.dart';
+import '../../../core/widgets/toast.dart';
+import '../services/exercise_telemetry.dart';
 
 const String kExerciseLabel =
     'Guided self-reflection activity. Not therapy or treatment.';
@@ -78,16 +81,14 @@ class _ExerciseRunnerScreenState extends State<ExerciseRunnerScreen> {
       await ExerciseRepository.save(_c.session);
     } catch (_) {
       _saving = false;
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Could not save on this phone. Please try again.'),
-      ));
+      Toast.show(messenger, 'Could not save on this phone. Please try again.',
+          kind: ToastKind.error);
       return;
     }
     if (!mounted) return;
     Navigator.of(context).pop(false);
-    messenger.showSnackBar(const SnackBar(
-      content: Text('Saved. Open it from the Exercise Library to continue.'),
-    ));
+    Toast.show(messenger, 'Saved. Open it from the Exercise Library to continue.',
+        kind: ToastKind.success);
   }
 
   Future<void> _finish() async {
@@ -99,18 +100,18 @@ class _ExerciseRunnerScreenState extends State<ExerciseRunnerScreen> {
       _c.session.completedAt = DateTime.now();
       await ExerciseRepository.save(_c.session);
       entriesChanged.value++;
+      // FR-61: only the exercise type goes to the server, never what was written.
+      unawaited(ExerciseTelemetry.completed(_c.session.exerciseId));
     } catch (_) {
       _saving = false;
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Could not save on this phone. Please try again.'),
-      ));
+      Toast.show(messenger, 'Could not save on this phone. Please try again.',
+          kind: ToastKind.error);
       return;
     }
     if (!mounted) return;
     Navigator.of(context).pop(true);
-    messenger.showSnackBar(const SnackBar(
-      content: Text('Saved in Exercise Progress, encrypted on this phone.'),
-    ));
+    Toast.show(messenger, 'Saved in Exercise Progress, encrypted on this phone.',
+        kind: ToastKind.success);
   }
 
   Future<void> _discard() async {
