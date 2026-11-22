@@ -121,7 +121,6 @@ The reminder is a local notification (flutter_local_notifications) with fixed, n
 ## D-18 Email delivery through Brevo's HTTPS API
 
 Verification and password-reset codes go through an `IEmailSender`. In deployment the sender is `BrevoEmailSender`, which calls Brevo's HTTPS API, as SRS section 2.7 requires, because the free web host blocks SMTP ports. `SmtpEmailSender` (Gmail) remains for local development only and is chosen with `Email:Provider` (default `Smtp`, deployment sets `Brevo`). Only the recipient address, display name and the message text are sent (TB-D); the code is never logged. Known limit of the free beta: mail sent from a Gmail address as sender may reach the spam folder, because Gmail's policy distrusts mail from its addresses sent by other servers. Reliable delivery needs a sender on a domain owned by the project with SPF/DKIM set up; this is planned before real users.
-
 ## D-19 Guided exercises (SRS 3.5)
 
 **SRS:** FR-35 to FR-53, FR-70 to FR-73.
@@ -138,3 +137,28 @@ Verification and password-reset codes go through an `IEmailSender`. In deploymen
 **SRS:** FR-15 (search and filtering), NFR-16 (data kept no longer than needed).
 **Search:** the text typed in History is split into words. An entry matches only if every word is found, in any order and ignoring case, in the entry text, in one of its feeling tags, or in the name of its thinking pattern (for example "all-or-nothing" finds the pattern all_or_nothing). The found words are marked in the list and the list starts near the first match when it is far into a long entry. The result count is shown. The mood and date filters can be combined with the words. All of this runs on the phone against the encrypted database. An earlier version of the query had a missing bracket and failed whenever a word was typed; this is fixed.
 **Cleanup job:** `TokenCleanupService` runs every 6 hours and deletes refresh tokens and e-mail codes that expired more than one day ago. A token is kept until it expires so reuse of a revoked token is still noticed. Users do not see this job.
+
+## D-21 Admin portal access and RBAC (FR-54)
+
+**SRS:** FR-54, NFR security.
+**Decision:** The admin portal is a separate web app (React, Vite, TypeScript) that signs in through the same `/auth/login` endpoint as the phone app. Access is role-based: the access token carries a `role` claim (`user` or `admin`), and every `/admin/*` route needs the `admin` policy. A route filter then checks the database on every request that the caller still exists, is an `admin` and is `active`, so a demoted or suspended admin loses access at once instead of when the token expires. A non-admin who signs in to the portal is signed out straight away and sees "This account does not have admin access". Admin routes are rate limited (120 per minute per user).
+**First admin:** there is no sign-up for admins. `AdminSeeder` reads `Admin:Email` and `Admin:Password` (user secrets or environment variables) at start-up and creates the account, or promotes an existing one. It never changes the password of an existing account, and does nothing if the settings are empty.
+**Browser access:** CORS is allowed only for the origins in `Cors:AdminOrigins` (localhost:5173 and 4173 in development).
+**Tokens in the portal:** the access token is kept in memory and the refresh token in sessionStorage, which is cleared when the tab closes.
+
+## D-22 Admin statistics are counts only (FR-55, FR-57 to FR-61)
+
+**Decision:** The portal never receives journal text, reflection text or exercise answers. It shows: total users, new registrations, daily active users and reflections per day (FR-55); AI requests, average response time of successful requests, errors and rate-limit counts (FR-57); anonymous safety-screening counts per day (FR-58); API and database status with recent error counts (FR-59); the share of reflections rated helpful and the reason categories (FR-60); and completed exercises per type (FR-61).
+**Days:** a day is an Asia/Karachi day (UTC+5, no daylight saving). Events are fetched as UTC times and grouped into Karachi days in memory, so the rule is plain C# that is unit tested, and every day in the range is filled with zero when nothing happened. A daily active user is a person who signed in or refreshed a token that day. Ranges are limited to 7, 14, 30 or 90 days (maximum 90).
+**Health:** unexpected server errors are counted by `ErrorCounter` (time stamps only, kept 24 hours, in memory, so it resets when the server restarts). AI errors and rate limits come from the usage log.
+**Exercises (FR-61):** the phone sends `POST /telemetry/exercise` with only the exercise type after a local save. The server accepts only the 13 known type names, writes an `ExerciseEvent` with no user id and rate limits the endpoint. If the request fails the exercise is not affected.
+
+## D-23 Managing users (FR-56)
+
+**Decision:** The portal lists users (newest first, 15 per page) and searches by part of the e-mail address. Suspend, Reactivate and Process deletion each ask for confirmation. Rules (unit tested): an admin cannot suspend themselves or another admin; only an `active` account can be suspended; only a `suspended` account can be reactivated; only a `pending_deletion` account can be deleted by an admin. Suspending sets the status and revokes all the user's refresh tokens, so they are signed out everywhere. Processing a deletion removes the user row and everything that cascades from it, the same result as the automatic purge. Admin actions are logged with user ids only, never with e-mail or text.
+
+## D-24 Learn about mindfulness (FR-64 to FR-69) and UX polish
+
+**Learn:** five original articles (what mindfulness is; why it may help; how it connects to CBT reframing in MindPal; simple ways to practise; not therapy and when to get help) are bundled as Dart constants. They work offline, use no server and no AI, and store nothing about the reader. The wording is careful ("may help"), makes no health claims, quotes no study (a study may be added only with its original source named), and recommends no product. Every article ends with the note "MindPal is not therapy...". The practice article opens a five-minute Breathing Bubble (25 breaths of 12 seconds, nothing saved); the help article opens a Help & support screen with the verified helpline. Learn is reached from a Home card and from the Exercise Library, and the bottom bar stays at four items.
+**Toasts:** `Toast` shows short results (saved, deleted, password changed, could not save) as a floating card with an icon (green, red or purple), on top of the existing snack bar theme.
+**Responsive:** `ResponsiveFrame`, installed in `MaterialApp.builder`, limits the app to 720 px wide and centres it on tablets and landscape phones. On a normal phone it changes nothing.
