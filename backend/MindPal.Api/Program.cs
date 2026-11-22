@@ -1,4 +1,3 @@
-
 using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -6,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MindPal.Api.Admin;
 using MindPal.Api.Auth;
 using MindPal.Api.Consents;
 using MindPal.Api.Data;
@@ -112,7 +112,23 @@ builder.Services.AddAuthentication(
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o =>
+    o.AddPolicy("admin", p => p
+        .RequireAuthenticatedUser()
+        .RequireRole("admin")));
+
+// Browser access for the admin portal only (Cors:AdminOrigins, comma-separated).
+var adminOrigins = (builder.Configuration["Cors:AdminOrigins"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+if (adminOrigins.Length == 0 && builder.Environment.IsDevelopment())
+    adminOrigins = ["http://localhost:5173", "http://localhost:4173"];
+
+builder.Services.AddCors(o => o.AddPolicy("admin-portal", p =>
+{
+    if (adminOrigins.Length > 0)
+        p.WithOrigins(adminOrigins).AllowAnyHeader().AllowAnyMethod();
+}));
 
 // ---- Problem details (RFC 9457) ----
 builder.Services.AddProblemDetails();
@@ -126,6 +142,9 @@ builder.Services.AddHostedService<AccountPurgeService>();
 
 // Housekeeping: removes expired sign-in tokens and e-mail codes
 builder.Services.AddHostedService<TokenCleanupService>();
+
+// First admin account (only when Admin:Email and Admin:Password are set)
+builder.Services.AddHostedService<AdminSeeder>();
 
 // ---- Rate limiting (SRS v1.1) ----
 builder.Services.AddRateLimiter(o =>
@@ -164,6 +183,24 @@ builder.Services.AddRateLimiter(o =>
                 Window = TimeSpan.FromHours(1)
             }));
 
+    o.AddPolicy("admin", c =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            c.User.FindFirst("sub")?.Value ?? Ip(c),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
+    o.AddPolicy("telemetry", c =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            c.User.FindFirst("sub")?.Value ?? Ip(c),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
     o.AddPolicy("reflect", c =>
         RateLimitPartition.GetFixedWindowLimiter(
             c.User.FindFirst("sub")?.Value ?? Ip(c),
@@ -191,6 +228,7 @@ var app = builder.Build();
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
+app.UseCors("admin-portal");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -255,6 +293,7 @@ app.MapConsents();
 app.MapReflection();
 app.MapAccount();
 app.MapFeedback();
+app.MapAdmin();
 
 app.Run();
 
