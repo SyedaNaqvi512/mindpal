@@ -10,6 +10,7 @@ import '../models/entry_format.dart';
 import '../models/mood.dart';
 import '../widgets/reflection_panel.dart';
 import 'new_entry_screen.dart';
+import '../../../core/widgets/toast.dart';
 
 /// FR-16: one entry with its mood, tags, text and saved reflection.
 /// Also the place to edit (FR-14) or delete an entry.
@@ -93,11 +94,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Entry deleted.')));
+      Toast.show(messenger, 'Entry deleted.', kind: ToastKind.success);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not delete the entry.')));
+      Toast.of(context, 'Could not delete the entry.', kind: ToastKind.error);
     }
   }
 

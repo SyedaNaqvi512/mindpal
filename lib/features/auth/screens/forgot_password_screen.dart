@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import '../../account/models/password_rules.dart';
 import '../../account/widgets/password_checklist.dart';
 import '../services/auth_service.dart';
+import '../../../core/widgets/toast.dart';
 
 /// FR-06: ask for a code by email, then choose a new password.
 class ForgotPasswordScreen extends StatefulWidget {
@@ -98,8 +99,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await AuthService.instance
           .resetPassword(_email.text, _code.text, _password.text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Password changed. Please sign in.')));
+      Toast.of(context, 'Password changed. Please sign in.',
+          kind: ToastKind.success);
       Navigator.of(context).pop();
     } on AuthException catch (e) {
       if (mounted) setState(() => _error = e.message);

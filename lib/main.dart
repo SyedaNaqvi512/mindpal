@@ -12,6 +12,7 @@ import 'features/applock/screens/app_lock_gate.dart';
 import 'features/applock/services/app_lock_service.dart';
 import 'features/auth/screens/auth_gate.dart';
 import 'features/reminders/services/reminder_service.dart';
+import 'core/widgets/responsive_frame.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +66,9 @@ class MindPalApp extends ConsumerWidget {
       darkTheme: AppTheme.build(AppPalette.midnightLavender),
       themeMode: mode,
       builder: (context, child) =>
-          AppLockGate(child: child ?? const SizedBox.shrink()),
+          AppLockGate(
+        child: ResponsiveFrame(child: child ?? const SizedBox.shrink()),
+      ),
       home: const AuthGate(),
     );
   }

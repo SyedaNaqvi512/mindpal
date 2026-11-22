@@ -24,6 +24,7 @@ import '../services/quick_reflection_engine.dart';
 import '../services/reflection_engine.dart';
 import '../services/reflection_service.dart';
 import '../widgets/reflection_panel.dart';
+import '../../../core/widgets/toast.dart';
 
 enum ReflectionMode { cloud, onDevice }
 
@@ -228,16 +229,12 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) {
       setState(() => _notice = 'Write a few words first.');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Write a few words first.')));
+      Toast.of(context, 'Write a few words first.');
       return null;
     }
     if (_mood == null) {
       setState(() => _moodMissing = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please choose how you feel.')),
-      );
+      Toast.of(context, 'Please choose how you feel.');
       return null;
     }
     try {
@@ -272,12 +269,10 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final editing = _editing;
     Navigator.of(context).pop();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          editing ? 'Changes saved.' : 'Entry saved on this phone.',
-        ),
-      ),
+    Toast.show(
+      messenger,
+      editing ? 'Changes saved.' : 'Entry saved on this phone.',
+      kind: ToastKind.success,
     );
   }
 

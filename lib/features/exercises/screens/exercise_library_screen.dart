@@ -7,6 +7,7 @@ import '../models/exercise_session.dart';
 import '../services/exercise_repository.dart';
 import 'exercise_progress_screen.dart';
 import 'exercise_runner_screen.dart';
+import '../../learn/learn_screen.dart';
 
 /// FR-35: the Exercise Library. Each exercise is a card with a title, a
 /// one-line description and a Start button. Reachable from Home.
@@ -142,6 +143,29 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text('Try something quick',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                    Icon(Symbols.chevron_right_rounded, color: scheme.primary),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LearnScreen()),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Symbols.menu_book_rounded, color: scheme.primary),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text('Learn about mindfulness',
                           style: TextStyle(fontWeight: FontWeight.w700)),
                     ),
                     Icon(Symbols.chevron_right_rounded, color: scheme.primary),
