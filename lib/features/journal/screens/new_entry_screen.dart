@@ -8,7 +8,6 @@ import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
 import '../../../core/motion/motion.dart';
 import '../../../core/theme/app_tokens.dart';
-import '../../../core/widgets/breathing_circle.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../../core/widgets/inline_message.dart';
 import '../../../core/widgets/mood_face.dart';
@@ -24,6 +23,7 @@ import '../services/quick_reflection_engine.dart';
 import '../services/reflection_engine.dart';
 import '../services/reflection_service.dart';
 import '../widgets/reflection_panel.dart';
+import '../widgets/reflection_progress.dart';
 import '../../../core/widgets/toast.dart';
 
 enum ReflectionMode { cloud, onDevice }
@@ -57,7 +57,8 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   final ReflectionEngine _deviceEngine = ReflectionService();
   final SpeechToText _speech = SpeechToText();
 
-  ReflectionMode _mode = ReflectionMode.cloud;
+  /// Cloud only. The on-device model was removed from the screen (D-25).
+  final ReflectionMode _mode = ReflectionMode.cloud;
   String? _result;
   String? _notice;
   bool _crisis = false;
@@ -762,27 +763,6 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  SegmentedButton<ReflectionMode>(
-                                    segments: const [
-                                      ButtonSegment(
-                                        value: ReflectionMode.cloud,
-                                        label: Text('Cloud AI'),
-                                        icon: Icon(Symbols.cloud_rounded),
-                                      ),
-                                      ButtonSegment(
-                                        value: ReflectionMode.onDevice,
-                                        label: Text('On this phone'),
-                                        icon: Icon(Symbols.smartphone_rounded),
-                                      ),
-                                    ],
-                                    selected: {_mode},
-                                    onSelectionChanged: busy
-                                        ? null
-                                        : (selection) => setState(
-                                            () => _mode = selection.first,
-                                          ),
-                                  ),
-                                  const SizedBox(height: 10),
                                   Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -795,13 +775,9 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          _mode == ReflectionMode.cloud
-                                              ? 'Your entry is checked for safety on this '
-                                                    'phone first. It is sent to an AI service '
-                                                    'only after you agree.'
-                                              : 'On-device mode keeps your entry on this '
-                                                    'phone. It needs the model file and can '
-                                                    'be slower.',
+                                          'Your entry is checked for safety on this '
+                                          'phone first. It is sent to an AI service '
+                                          'only after you agree.',
                                           style: hint,
                                         ),
                                       ),
@@ -817,16 +793,15 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (_loading)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 16),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
                                 child: Card(
                                   child: Padding(
-                                    padding: EdgeInsets.all(20),
+                                    padding: const EdgeInsets.all(20),
                                     child: Center(
-                                      child: BreathingCircle(
-                                        label:
-                                            'Reflecting gently… the first reply '
-                                            'can take up to a minute.',
+                                      child: ReflectionProgress(
+                                        onDevice:
+                                            _mode == ReflectionMode.onDevice,
                                       ),
                                     ),
                                   ),
