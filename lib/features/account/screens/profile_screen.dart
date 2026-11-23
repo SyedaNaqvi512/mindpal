@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/validation/validators.dart';
 import '../../../core/widgets/busy_button.dart';
 import '../../../core/widgets/inline_message.dart';
 import '../../auth/services/auth_service.dart';
@@ -64,9 +65,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       (_name.text.trim() != _profile!.displayName || _avatar != _profile!.avatarId);
 
   Future<void> _save() async {
-    final name = _name.text.trim();
-    if (name.isEmpty || name.length > 40) {
-      setState(() => _error = 'Name must be 1 to 40 characters.');
+    final name = _name.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final nameError = Validators.name(name);
+    if (nameError != null) {
+      setState(() => _error = nameError);
       return;
     }
     setState(() {
@@ -150,7 +152,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       textCapitalization: TextCapitalization.words,
                       maxLength: 40,
                       onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(labelText: 'Display name'),
+                      decoration: InputDecoration(
+                        labelText: 'Display name',
+                        errorText:
+                            _name.text.isEmpty || _name.text != _profile?.displayName
+                                ? Validators.name(_name.text)
+                                : null,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text('Choose a picture', style: text.titleMedium),
@@ -218,7 +226,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     BusyButton(
                       label: 'Save changes',
                       busy: _saving,
-                      onPressed: (_dirty && !_saving) ? _save : null,
+                      onPressed: (_dirty && !_saving && Validators.name(_name.text) == null)
+                          ? _save
+                          : null,
                     ),
                     const SizedBox(height: 24),
                     Text('Account', style: text.titleMedium),

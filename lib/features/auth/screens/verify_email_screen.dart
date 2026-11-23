@@ -7,6 +7,7 @@ import '../../../core/widgets/busy_button.dart';
 import '../../../core/widgets/inline_message.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/validation/validators.dart';
 import '../services/auth_service.dart';
 
 /// FR-03: enter the 6-digit code that was emailed. On success the user is signed in.
@@ -58,8 +59,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   Future<void> _verify() async {
     final code = _code.text.trim();
-    if (code.length != 6) {
-      setState(() => _error = 'Enter the 6-digit code.');
+    final codeError = Validators.code6(code);
+    if (codeError != null) {
+      setState(() => _error = codeError);
       return;
     }
     setState(() {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/auth_scaffold.dart';
 import '../../../core/widgets/busy_button.dart';
 import '../../../core/widgets/inline_message.dart';
+import '../../../core/validation/validators.dart';
 import '../../../core/widgets/password_field.dart';
 import 'package:flutter/services.dart';
 
@@ -56,8 +57,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _sendCode() async {
     final email = _email.text.trim();
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-      setState(() => _error = 'Enter a valid email.');
+    final emailError = Validators.email(email);
+    if (emailError != null) {
+      setState(() => _error = emailError);
       return;
     }
     setState(() {
@@ -81,8 +83,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _reset() async {
-    if (_code.text.trim().length != 6) {
-      setState(() => _error = 'Enter the 6-digit code.');
+    final codeError = Validators.code6(_code.text);
+    if (codeError != null) {
+      setState(() => _error = codeError);
       return;
     }
     final pwError = PasswordRules.validate(_password.text);

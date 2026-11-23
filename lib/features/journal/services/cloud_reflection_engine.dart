@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../../core/errors/app_messages.dart';
 import '../../auth/services/auth_service.dart';
 import 'reflection_engine.dart';
 
@@ -61,15 +62,31 @@ class CloudReflectionEngine implements ReflectionEngine {
         throw ReflectionException.of(ReflectionErrorKind.unavailable);
       }
       throw ReflectionException.of(
-          ReflectionErrorKind.other, problemMessage(data));
+        ReflectionErrorKind.other,
+        AppMessages.resolve(
+          code: code as String?,
+          status: status,
+          fieldError: fieldError(data),
+        ),
+      );
     } on SessionExpiredException {
       rethrow;
     } on ReflectionException {
       rethrow;
     } on TimeoutException {
       throw ReflectionException.of(ReflectionErrorKind.slow);
-    } catch (_) {
-      throw ReflectionException.of(ReflectionErrorKind.offline);
+    } on AuthException catch (e) {
+      if (e.code != AuthService.networkCode) rethrow;
+      throw ReflectionException(
+        '${e.message} Your entry is saved, and you can try again.',
+        kind: ReflectionErrorKind.offline,
+      );
+    } catch (e) {
+      final m = await AppMessages.forNetworkError(e);
+      throw ReflectionException(
+        '$m Your entry is saved, and you can try again.',
+        kind: ReflectionErrorKind.offline,
+      );
     }
   }
 }
