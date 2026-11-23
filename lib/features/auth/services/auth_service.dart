@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../core/errors/app_messages.dart';
 import '../../account/models/user_profile.dart';
 
 class AuthException implements Exception {
@@ -18,13 +19,14 @@ class AuthException implements Exception {
 
 class SessionExpiredException extends AuthException {
   SessionExpiredException()
-    : super('Your session has expired. Please sign in again.');
+    : super(AppMessages.sessionExpired, code: 'invalid_token');
 }
 
 /// Login was refused only because the email is not verified yet.
 class EmailNotVerifiedException extends AuthException {
   EmailNotVerifiedException(this.email)
-    : super('Please verify your email first.', code: 'email_not_verified');
+    : super(AppMessages.forCode('email_not_verified')!,
+          code: 'email_not_verified');
   final String email;
 }
 
@@ -46,20 +48,23 @@ Map<String, dynamic> decodeJson(String body) {
   }
 }
 
-/// Turns the server's error format (RFC 9457) into one readable sentence.
-String problemMessage(Map<String, dynamic> d) {
+/// The first field-level message the server named, if any.
+String? fieldError(Map<String, dynamic> d) {
   final errors = d['errors'];
   if (errors is Map && errors.isNotEmpty) {
     final first = errors.values.first;
     if (first is List && first.isNotEmpty) return first.first.toString();
   }
-  final t = d['title'];
-  final de = d['detail'];
-  final title = t is String ? t : null;
-  final detail = de is String ? de : null;
-  if (title != null && detail != null) return '$title. $detail';
-  return title ?? detail ?? 'Something went wrong. Please try again.';
+  return null;
 }
+
+/// Turns the server's error format (RFC 9457) into one clear sentence.
+String problemMessage(Map<String, dynamic> d, [int? status]) =>
+    AppMessages.resolve(
+      code: d['code'] as String?,
+      status: status,
+      fieldError: fieldError(d),
+    );
 
 class AuthService {
   AuthService._();
@@ -72,8 +77,7 @@ class AuthService {
   static const _json = {'Content-Type': 'application/json'};
   static const _kAccess = 'mindpal_access_token';
   static const _kRefresh = 'mindpal_refresh_token';
-  static const _network =
-      'Could not reach MindPal. Check your connection and try again.';
+  static const networkCode = 'network';
 
   // resetOnError: false, so a read error never wipes the other stored secrets.
   static const FlutterSecureStorage _storage = FlutterSecureStorage(
@@ -106,7 +110,7 @@ class AuthService {
       'gender': gender,
     });
     final data = decodeJson(r.body);
-    if (r.statusCode != 200 && r.statusCode != 201) throw _error(data);
+    if (r.statusCode != 200 && r.statusCode != 201) throw _error(data, r.statusCode);
     final auth = data['auth'];
     final required = (data['verificationRequired'] as bool?) ?? false;
     if (!required && auth is Map<String, dynamic>) await _saveSession(auth);
@@ -129,7 +133,7 @@ class AuthService {
     if (data['code'] == 'email_not_verified') {
       throw EmailNotVerifiedException(email.trim());
     }
-    throw _error(data);
+    throw _error(data, r.statusCode);
   }
 
   /// Checks the emailed code. On success the user is signed in.
@@ -139,21 +143,21 @@ class AuthService {
       'code': code.trim(),
     });
     final data = decodeJson(r.body);
-    if (r.statusCode != 200) throw _error(data);
+    if (r.statusCode != 200) throw _error(data, r.statusCode);
     await _saveSession(data);
   }
 
   Future<void> resendVerification(String email) async {
     final r = await _post('/auth/resend-verification', {'email': email.trim()});
     if (r.statusCode != 202 && r.statusCode != 200) {
-      throw _error(decodeJson(r.body));
+      throw _error(decodeJson(r.body), r.statusCode);
     }
   }
 
   Future<void> forgotPassword(String email) async {
     final r = await _post('/auth/forgot-password', {'email': email.trim()});
     if (r.statusCode != 202 && r.statusCode != 200) {
-      throw _error(decodeJson(r.body));
+      throw _error(decodeJson(r.body), r.statusCode);
     }
   }
 
@@ -168,7 +172,7 @@ class AuthService {
       'newPassword': newPassword,
     });
     if (r.statusCode != 204 && r.statusCode != 200) {
-      throw _error(decodeJson(r.body));
+      throw _error(decodeJson(r.body), r.statusCode);
     }
   }
 
@@ -176,7 +180,7 @@ class AuthService {
 
   Future<UserProfile> fetchProfile() async {
     final r = await authorizedGet('/me');
-    if (r.statusCode != 200) throw _error(decodeJson(r.body));
+    if (r.statusCode != 200) throw _error(decodeJson(r.body), r.statusCode);
     return UserProfile.fromJson(decodeJson(r.body));
   }
 
@@ -189,7 +193,7 @@ class AuthService {
       'avatarId': ?avatarId,
     });
 
-    if (r.statusCode != 200) throw _error(decodeJson(r.body));
+    if (r.statusCode != 200) throw _error(decodeJson(r.body), r.statusCode);
 
     return UserProfile.fromJson(decodeJson(r.body));
   }
@@ -201,14 +205,23 @@ class AuthService {
       'newPassword': next,
     });
     final data = decodeJson(r.body);
-    if (r.statusCode != 200) throw _error(data);
+    if (r.statusCode != 200) throw _error(data, r.statusCode);
     await _saveSession(data);
   }
 
   // ---- plumbing ----------------------------------------------------------
 
-  AuthException _error(Map<String, dynamic> d) =>
-      AuthException(problemMessage(d), code: d['code'] as String?);
+  AuthException _error(Map<String, dynamic> d, [int? status]) {
+    final code = d['code'] as String?;
+    return AuthException(
+      AppMessages.resolve(
+        code: code,
+        status: status,
+        fieldError: fieldError(d),
+      ),
+      code: code,
+    );
+  }
 
   Future<http.Response> _post(String path, Map<String, dynamic> body) async {
     try {
@@ -219,8 +232,9 @@ class AuthService {
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 70));
-    } catch (_) {
-      throw AuthException(_network);
+    } catch (e) {
+      throw AuthException(await AppMessages.forNetworkError(e),
+          code: networkCode);
     }
   }
 
@@ -255,8 +269,9 @@ class AuthService {
       }
     } on AuthException {
       rethrow;
-    } catch (_) {
-      throw AuthException(_network);
+    } catch (e) {
+      throw AuthException(await AppMessages.forNetworkError(e),
+          code: networkCode);
     }
     return r;
   }

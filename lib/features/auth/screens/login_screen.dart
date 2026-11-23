@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/auth_scaffold.dart';
 import '../../../core/widgets/busy_button.dart';
 import '../../../core/widgets/inline_message.dart';
+import '../../../core/validation/validators.dart';
 import '../../../core/widgets/password_field.dart';
 
 import '../services/auth_service.dart';
@@ -82,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: Form(
         key: _form,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -91,8 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.email],
               decoration: const InputDecoration(labelText: 'Email'),
-              validator: (v) =>
-                  (v == null || !v.contains('@')) ? 'Enter a valid email.' : null,
+              validator: Validators.email,
             ),
             const SizedBox(height: 14),
             PasswordField(
@@ -103,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (!_busy) _submit();
               },
               validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Enter your password.' : null,
+                  Validators.required(v, 'Enter your password.'),
             ),
             Align(
               alignment: Alignment.centerRight,

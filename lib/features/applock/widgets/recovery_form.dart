@@ -18,7 +18,7 @@ class _RecoveryFormState extends State<RecoveryForm> {
     RecoveryQuestions.count,
     (_) => TextEditingController(),
   );
-  String? _error;
+  final _touched = List<bool>.filled(RecoveryQuestions.count, false);
 
   @override
   void dispose() {
@@ -28,14 +28,20 @@ class _RecoveryFormState extends State<RecoveryForm> {
     super.dispose();
   }
 
+  List<String> get _texts => [for (final c in _answers) c.text];
+
+  bool get _valid => validateRecovery(_ids, _texts) == null;
+
   void _submit() {
-    final texts = [for (final c in _answers) c.text];
-    final err = validateRecovery(_ids, texts);
-    if (err != null) {
-      setState(() => _error = err);
+    if (!_valid) {
+      setState(() {
+        for (var i = 0; i < _touched.length; i++) {
+          _touched[i] = true;
+        }
+      });
       return;
     }
-    widget.onDone([for (final i in _ids) i!], texts);
+    widget.onDone([for (final i in _ids) i!], _texts);
   }
 
   @override
@@ -56,38 +62,47 @@ class _RecoveryFormState extends State<RecoveryForm> {
         const SizedBox(height: 16),
         for (var i = 0; i < RecoveryQuestions.count; i++) ...[
           DropdownButtonFormField<String>(
+            key: ValueKey('q$i-${_ids[i]}'),
             initialValue: _ids[i],
             isExpanded: true,
-            decoration: InputDecoration(labelText: 'Question ${i + 1}'),
+            decoration: InputDecoration(
+              labelText: 'Question ${i + 1}',
+              errorText: _touched[i] && _ids[i] == null
+                  ? 'Choose a question.'
+                  : null,
+            ),
             items: [
-              for (final e in RecoveryQuestions.all.entries)
+              for (final e in questionsFor(i, _ids).entries)
                 DropdownMenuItem(
                   value: e.key,
                   child: Text(e.value, overflow: TextOverflow.ellipsis),
                 ),
             ],
-            onChanged: (v) => setState(() => _ids[i] = v),
+            onChanged: (v) => setState(() {
+              _ids[i] = v;
+              _touched[i] = true;
+            }),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _answers[i],
             textInputAction: TextInputAction.next,
-            decoration: InputDecoration(labelText: 'Answer ${i + 1}'),
+            maxLength: 60,
+            onChanged: (_) => setState(() => _touched[i] = true),
+            decoration: InputDecoration(
+              labelText: 'Answer ${i + 1}',
+              counterText: '',
+              errorText: _touched[i] && _ids[i] != null
+                  ? answerError(_answers[i].text, _texts, i)
+                  : null,
+            ),
           ),
           const SizedBox(height: 16),
         ],
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: _submit,
+            onPressed: _valid ? _submit : null,
             child: const Text('Continue'),
           ),
         ),

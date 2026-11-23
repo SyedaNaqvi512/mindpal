@@ -1,3 +1,4 @@
+import '../../../core/errors/app_messages.dart';
 import '../../auth/services/auth_service.dart';
 
 /// AI-processing consent (SRS FR-17, FR-33). The server is the authority:
@@ -20,7 +21,7 @@ class ConsentService {
           .authorizedGet('/me/consents')
           .timeout(const Duration(seconds: 20));
       if (r.statusCode != 200) {
-        throw AuthException(problemMessage(decodeJson(r.body)));
+        throw AuthException(problemMessage(decodeJson(r.body), r.statusCode));
       }
       final list = decodeJson(r.body)['consents'];
       var granted = false;
@@ -37,9 +38,9 @@ class ConsentService {
       rethrow;
     } on AuthException {
       rethrow;
-    } catch (_) {
-      throw AuthException(
-          'Could not reach MindPal. Check your connection and try again.');
+    } catch (e) {
+      throw AuthException(await AppMessages.forNetworkError(e),
+          code: AuthService.networkCode);
     }
   }
 
@@ -50,16 +51,16 @@ class ConsentService {
               {'policyVersion': policyVersion})
           .timeout(const Duration(seconds: 20));
       if (r.statusCode != 200) {
-        throw AuthException(problemMessage(decodeJson(r.body)));
+        throw AuthException(problemMessage(decodeJson(r.body), r.statusCode));
       }
       _granted = true;
     } on SessionExpiredException {
       rethrow;
     } on AuthException {
       rethrow;
-    } catch (_) {
-      throw AuthException(
-          'Could not reach MindPal. Check your connection and try again.');
+    } catch (e) {
+      throw AuthException(await AppMessages.forNetworkError(e),
+          code: AuthService.networkCode);
     }
   }
 
@@ -69,16 +70,16 @@ class ConsentService {
           .authorizedDelete('/me/consents/ai_processing')
           .timeout(const Duration(seconds: 20));
       if (r.statusCode != 204 && r.statusCode != 200) {
-        throw AuthException(problemMessage(decodeJson(r.body)));
+        throw AuthException(problemMessage(decodeJson(r.body), r.statusCode));
       }
       _granted = false;
     } on SessionExpiredException {
       rethrow;
     } on AuthException {
       rethrow;
-    } catch (_) {
-      throw AuthException(
-          'Could not reach MindPal. Check your connection and try again.');
+    } catch (e) {
+      throw AuthException(await AppMessages.forNetworkError(e),
+          code: AuthService.networkCode);
     }
   }
 }

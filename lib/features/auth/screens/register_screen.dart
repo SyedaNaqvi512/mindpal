@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/auth_scaffold.dart';
 import '../../../core/widgets/busy_button.dart';
 import '../../../core/widgets/inline_message.dart';
+import '../../../core/validation/validators.dart';
 import '../../../core/widgets/password_field.dart';
 
 import '../../account/models/avatars.dart';
@@ -87,6 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       child: Form(
         key: _form,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -95,12 +97,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Name'),
-              validator: (v) {
-                final t = v?.trim() ?? '';
-                if (t.isEmpty) return 'Enter your name.';
-                if (t.length > 40) return 'Keep it under 40 characters.';
-                return null;
-              },
+              maxLength: 40,
+              validator: Validators.name,
             ),
             const SizedBox(height: 14),
             TextFormField(
@@ -108,12 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Email'),
-              validator: (v) {
-                final t = v?.trim() ?? '';
-                return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)
-                    ? null
-                    : 'Enter a valid email.';
-              },
+              validator: Validators.email,
             ),
             const SizedBox(height: 14),
             PasswordField(
@@ -144,7 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (_genderMissing)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text('Please choose one.', style: TextStyle(color: scheme.error)),
+                child: Text('Please choose a gender to continue.', style: TextStyle(color: scheme.error)),
               ),
             const SizedBox(height: 20),
             if (_error != null) ...[

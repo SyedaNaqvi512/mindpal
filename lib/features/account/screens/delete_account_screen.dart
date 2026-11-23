@@ -50,7 +50,14 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       });
 
       if (res.statusCode != 202 && res.statusCode != 200) {
-        throw AuthException(problemMessage(decodeJson(res.body)));
+        final d = decodeJson(res.body);
+        final wrongPassword = d['code'] == 'invalid_credentials' ||
+            d['code'] == 'invalid_current_password';
+        throw AuthException(
+          wrongPassword
+              ? 'That password is not correct. Nothing was deleted.'
+              : problemMessage(d, res.statusCode),
+        );
       }
 
       // The server accepted the request. Now clear everything on this phone.

@@ -74,6 +74,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
                 key: _form,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -91,7 +92,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       obscureText: _hide,
                       onChanged: (_) => setState(() {}),
                       decoration: deco('New password'),
-                      validator: (v) => PasswordRules.validate(v ?? ''),
+                      validator: (v) {
+                        final rule = PasswordRules.validate(v ?? '');
+                        if (rule != null) return rule;
+                        if (v == _current.text) {
+                          return 'Your new password must be different from your current password.';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 8),
                     PasswordChecklist(password: _new.text),
@@ -100,8 +108,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       controller: _confirm,
                       obscureText: _hide,
                       decoration: deco('Repeat new password'),
-                      validator: (v) =>
-                          v == _new.text ? null : 'Passwords do not match.',
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Repeat your new password.';
+                        }
+                        return v == _new.text ? null : 'Passwords do not match.';
+                      },
                     ),
                     const SizedBox(height: 20),
                     if (_error != null)

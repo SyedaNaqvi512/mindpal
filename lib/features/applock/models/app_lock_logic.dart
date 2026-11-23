@@ -42,6 +42,36 @@ String? validateRecovery(List<String?> ids, List<String> answers) {
       return 'Each answer needs at least 3 characters.';
     }
   }
+  final normalized = [for (final a in answers) normalizeAnswer(a)];
+  if (normalized.toSet().length != normalized.length) {
+    return 'Use a different answer for each question.';
+  }
+  return null;
+}
+
+/// Questions still free for slot [index]: the ones the other two slots have
+/// not taken. The slot's own choice stays in the list.
+Map<String, String> questionsFor(int index, List<String?> chosen) {
+  final taken = <String>{
+    for (var i = 0; i < chosen.length; i++)
+      if (i != index && chosen[i] != null) chosen[i]!,
+  };
+  return {
+    for (final e in RecoveryQuestions.all.entries)
+      if (!taken.contains(e.key)) e.key: e.value,
+  };
+}
+
+/// Message for one answer box, or null when it is fine.
+String? answerError(String answer, List<String> all, int index) {
+  final a = normalizeAnswer(answer);
+  if (a.isEmpty) return 'Type your answer.';
+  if (a.length < 3) return 'Use at least 3 characters.';
+  for (var i = 0; i < all.length; i++) {
+    if (i != index && normalizeAnswer(all[i]) == a) {
+      return 'Use a different answer for each question.';
+    }
+  }
   return null;
 }
 
