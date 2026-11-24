@@ -8,6 +8,7 @@ import '../../../core/widgets/fade_slide_in.dart';
 import '../../auth/services/auth_service.dart';
 import '../../exercises/widgets/suggested_exercise_card.dart';
 import '../models/thinking_patterns.dart';
+import 'followup_chat.dart';
 import '../services/reflection_engine.dart';
 
 const _reasons = <String, String>{
@@ -100,7 +101,8 @@ class _ReflectionPanelState extends State<ReflectionPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Dismiss this reflection?'),
-        content: const Text('The draft will be deleted. Your entry stays.'),
+        content: const Text(
+            'The draft and any conversation about it will be deleted. Your entry stays.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -496,6 +498,13 @@ class _ReflectionPanelState extends State<ReflectionPanel> {
             ),
           ),
         ),
+        // The follow-up conversation needs the AI, so only AI reflections get it.
+        if (r['source'] == 'cloud')
+          FollowUpChat(
+            key: ValueKey('chat-${widget.entryId}-${r['id']}'),
+            entryId: widget.entryId,
+            reflectionText: r['reflection_text'] as String,
+          ),
         if (!draft)
           SuggestedExerciseCard(
             entryId: widget.entryId,

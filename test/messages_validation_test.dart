@@ -27,6 +27,7 @@ void main() {
         'same_password',
         'rate_limited',
         'ai_rate_limited',
+        'followup_limit_reached',
       ]) {
         expect(AppMessages.forCode(c), isNotNull, reason: c);
       }

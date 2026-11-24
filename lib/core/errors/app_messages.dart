@@ -67,8 +67,10 @@ class AppMessages {
     'consent_required': 'Please allow AI reflections to continue.',
     'rate_limited': tooManyRequests,
     'ai_rate_limited':
-        'You have reached the reflection limit for now. Please try again '
-            'later.',
+        'You have reached the AI limit for now. Please try again later.',
+    'followup_limit_reached':
+        'You have used all 10 questions for this entry. Start a new entry '
+            'to talk more.',
     'ai_timeout':
         'The AI is taking longer than usual. Please try again in a moment.',
     'ai_unavailable':
