@@ -87,7 +87,8 @@ public static class AdminEndpoints
         var dau = activity.GroupBy(d => d).ToDictionary(x => x.Key, x => x.Count());
 
         var reflections = await db.AiUsageLogs.AsNoTracking()
-            .Where(a => a.Status == "success" && a.CreatedAt >= since)
+            .Where(a => a.Status == "success" && a.CreatedAt >= since &&
+                        !a.Model.StartsWith(FollowUpLimits.ModelPrefix))
             .Select(a => a.CreatedAt).ToListAsync(ct);
 
         return Results.Ok(new
