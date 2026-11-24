@@ -1,3 +1,4 @@
+
 using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -136,6 +137,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 // Reflection service
 builder.Services.AddScoped<IReflectionEngine, GeminiReflectionEngine>();
+builder.Services.AddScoped<IFollowUpEngine, GeminiFollowUpEngine>();
 
 // Account deletion background service
 builder.Services.AddHostedService<AccountPurgeService>();
@@ -291,6 +293,7 @@ app.MapGet("/health/ready", async (
 app.MapAuth();
 app.MapConsents();
 app.MapReflection();
+app.MapFollowUp();
 app.MapAccount();
 app.MapFeedback();
 app.MapAdmin();

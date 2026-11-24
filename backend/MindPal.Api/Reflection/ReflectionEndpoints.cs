@@ -35,7 +35,7 @@ public static class ReflectionEndpoints
             extensions: ext);
     }
 
-    private static async Task<AiUsageLog> LogUsage(
+    internal static async Task<AiUsageLog> LogUsage(
         MindPalDbContext db,
         Guid userId,
         string model,
@@ -128,6 +128,7 @@ public static class ReflectionEndpoints
         var recent = db.AiUsageLogs.Where(l =>
             l.UserId == userId &&
             l.Status != "rate_limited" &&
+            !l.Model.StartsWith(FollowUpLimits.ModelPrefix) &&
             l.CreatedAt >= now.AddDays(-1));
 
         var successes = recent.Where(l => l.Status == "success");
