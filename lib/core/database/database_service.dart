@@ -8,7 +8,7 @@ import '../search_text.dart';
 
 class DatabaseService {
   static const String _databaseName = 'mindpal.db';
-  static const int _databaseVersion = 5;
+  static const int _databaseVersion = 6;
   static const String _databaseKeyName = 'mindpal_database_key';
 
   // resetOnError: false. With the default (true), one failed read of secure
@@ -83,6 +83,7 @@ class DatabaseService {
         await _createTagsTable(db);
         await _createIndexes(db);
         await _createExerciseTable(db);
+        await _createChatTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -103,6 +104,10 @@ class DatabaseService {
 
         if (oldVersion < 5) {
           await _createExerciseTable(db);
+        }
+
+        if (oldVersion < 6) {
+          await _createChatTable(db);
         }
       },
     );
@@ -162,6 +167,92 @@ class DatabaseService {
   static Future<void> ensureExerciseTable() async {
     final db = await database;
     await _createExerciseTable(db);
+  }
+
+  /// Creates the table for the follow-up conversation (Part 3). Messages are
+  /// stored in this encrypted database and are removed with an entry, with the
+  /// reflection, or with the account.
+  static Future<void> _createChatTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS reflection_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entry_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        suggestions_json TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (entry_id)
+          REFERENCES journal_entries (id)
+          ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_messages_entry ON reflection_messages (entry_id, id)',
+    );
+  }
+
+  /// Same safety net as the exercise table, for a database kept open across a
+  /// hot restart.
+  static Future<void> ensureChatTable() async {
+    final db = await database;
+    await _createChatTable(db);
+  }
+
+  /// All messages of an entry's conversation, oldest first.
+  static Future<List<Map<String, dynamic>>> getChatMessages(int entryId) async {
+    final db = await database;
+    return db.query(
+      'reflection_messages',
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+      orderBy: 'id ASC',
+    );
+  }
+
+  /// Saves one question and its answer together, so a conversation never has
+  /// a question without an answer.
+  static Future<void> addChatPair(
+    int entryId, {
+    required String user,
+    required String assistant,
+    String? suggestionsJson,
+  }) async {
+    final db = await database;
+    final now = DateTime.now();
+    await db.transaction((txn) async {
+      await txn.insert('reflection_messages', {
+        'entry_id': entryId,
+        'role': 'user',
+        'content': user,
+        'created_at': now.toIso8601String(),
+      });
+      await txn.insert('reflection_messages', {
+        'entry_id': entryId,
+        'role': 'assistant',
+        'content': assistant,
+        'suggestions_json': suggestionsJson,
+        'created_at': now.add(const Duration(milliseconds: 1)).toIso8601String(),
+      });
+    });
+  }
+
+  /// Deletes the conversation of one entry. The entry and reflection stay.
+  static Future<void> deleteChat(int entryId) async {
+    final db = await database;
+    await db.delete('reflection_messages', where: 'entry_id = ?', whereArgs: [entryId]);
+  }
+
+  /// The text of one entry, or null.
+  static Future<String?> getEntryContent(int entryId) async {
+    final db = await database;
+    final rows = await db.query(
+      'journal_entries',
+      columns: ['content'],
+      where: 'id = ?',
+      whereArgs: [entryId],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first['content'] as String?;
   }
 
   /// Adds version 4 reflection columns.
@@ -352,6 +443,12 @@ class DatabaseService {
         where: 'entry_id = ?',
         whereArgs: [entryId],
       );
+      // The conversation belonged to the old reflection.
+      await txn.delete(
+        'reflection_messages',
+        where: 'entry_id = ?',
+        whereArgs: [entryId],
+      );
 
       return txn.insert('reflections', {
         'entry_id': entryId,
@@ -414,7 +511,10 @@ class DatabaseService {
   static Future<void> deleteReflection(int entryId) async {
     final db = await database;
 
-    await db.delete('reflections', where: 'entry_id = ?', whereArgs: [entryId]);
+    await db.transaction((txn) async {
+      await txn.delete('reflections', where: 'entry_id = ?', whereArgs: [entryId]);
+      await txn.delete('reflection_messages', where: 'entry_id = ?', whereArgs: [entryId]);
+    });
   }
 
   /// Saves a reflection rating on the phone.
@@ -561,6 +661,8 @@ class DatabaseService {
     await db.transaction((txn) async {
       await txn.delete('reflections', where: 'entry_id = ?', whereArgs: [id]);
 
+      await txn.delete('reflection_messages', where: 'entry_id = ?', whereArgs: [id]);
+
       await txn.delete('entry_tags', where: 'entry_id = ?', whereArgs: [id]);
 
       await txn.delete('journal_entries', where: 'id = ?', whereArgs: [id]);
@@ -576,6 +678,7 @@ class DatabaseService {
 
     await db.transaction((txn) async {
       await txn.delete('reflections', where: 'entry_id IN ($marks)', whereArgs: ids);
+      await txn.delete('reflection_messages', where: 'entry_id IN ($marks)', whereArgs: ids);
       await txn.delete('entry_tags', where: 'entry_id IN ($marks)', whereArgs: ids);
       await txn.delete('journal_entries', where: 'id IN ($marks)', whereArgs: ids);
     });
