@@ -10,6 +10,7 @@ import '../../../core/widgets/auth_scaffold.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../../core/widgets/mood_face.dart';
+import '../../../core/widgets/motion_kit.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../account/models/user_profile.dart';
 import '../../account/services/profile_store.dart';
@@ -143,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             FadeSlideIn(
+              press: true,
               delay: const Duration(milliseconds: 180),
               child: Card(
                 color: scheme.primaryContainer,
@@ -179,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             FadeSlideIn(
+              press: true,
               delay: const Duration(milliseconds: 210),
               child: Card(
                 clipBehavior: Clip.antiAlias,
@@ -211,6 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             FadeSlideIn(
+              press: true,
               delay: const Duration(milliseconds: 240),
               child: Card(
                 clipBehavior: Clip.antiAlias,
@@ -312,7 +316,7 @@ class _Hero extends StatelessWidget {
     final date =
         '${_weekdayNames[now.weekday - 1]}, ${now.day} ${_monthNames[now.month - 1]}';
 
-    Widget pill(IconData icon, String label) => Container(
+    Widget pill(IconData icon, String label, {int? count, String suffix = ''}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: scheme.onPrimary.withValues(alpha: 0.18),
@@ -323,14 +327,25 @@ class _Hero extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: scheme.onPrimary),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onPrimary,
+              if (count == null)
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onPrimary,
+                  ),
+                )
+              else
+                CountUp(
+                  value: count,
+                  suffix: suffix,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onPrimary,
+                  ),
                 ),
-              ),
             ],
           ),
         );
@@ -395,9 +410,10 @@ class _Hero extends StatelessWidget {
                 pill(Symbols.calendar_today_rounded, date),
                 if (streak > 0)
                   pill(Symbols.local_fire_department_rounded,
-                      '$streak day${streak == 1 ? '' : 's'} streak'),
-                pill(Symbols.edit_note_rounded,
-                    '$weekEntries this week'),
+                      '$streak day${streak == 1 ? '' : 's'} streak',
+                      count: streak, suffix: ' day${streak == 1 ? '' : 's'} streak'),
+                pill(Symbols.edit_note_rounded, '$weekEntries this week',
+                    count: weekEntries, suffix: ' this week'),
               ],
             ),
           ],

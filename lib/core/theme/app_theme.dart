@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/motion_kit.dart';
 import 'app_palette.dart';
 import 'app_tokens.dart';
 
@@ -221,6 +222,10 @@ class AppTheme {
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: p.primary),
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: SoftPageTransitions(),
+        TargetPlatform.iOS: SoftPageTransitions(),
+      }),
     );
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/widgets/fade_slide_in.dart';
+import '../../core/widgets/motion_kit.dart';
 import '../safety/support_screen.dart';
 import 'breathing_session_screen.dart';
 import 'learn_content.dart';
@@ -29,7 +31,8 @@ class LearnScreen extends StatelessWidget {
           const SizedBox(height: 12),
           for (var i = 0; i < kArticles.length; i++)
             FadeSlideIn(
-              delay: Duration(milliseconds: 40 * i),
+              press: true,
+              delay: staggerDelay(i),
               child: _ArticleCard(article: kArticles[i]),
             ),
         ],
@@ -92,32 +95,79 @@ class _ArticleCard extends StatelessWidget {
   }
 }
 
-/// One article. FR-68: it ends with the "not therapy" note.
-class ArticleScreen extends StatelessWidget {
+/// One article. FR-68: it ends with the "not therapy" note. A thin bar under
+/// the title shows how far down the article the reader is.
+class ArticleScreen extends StatefulWidget {
   const ArticleScreen({super.key, required this.article});
 
   final Article article;
 
   @override
+  State<ArticleScreen> createState() => _ArticleScreenState();
+}
+
+class _ArticleScreenState extends State<ArticleScreen> {
+  final _scroll = ScrollController();
+  double _progress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  void _onScroll() {
+    if (!mounted || !_scroll.hasClients) return;
+    final max = _scroll.position.maxScrollExtent;
+    final p = max <= 0 ? 1.0 : (_scroll.offset / max).clamp(0.0, 1.0);
+    if ((p - _progress).abs() > 0.01) setState(() => _progress = p);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final article = widget.article;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Learn')),
+      appBar: AppBar(
+        title: const Text('Learn'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(3),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: _progress),
+            duration: Motion.of(context, const Duration(milliseconds: 200)),
+            builder: (context, v, _) => LinearProgressIndicator(
+              value: v,
+              minHeight: 3,
+              backgroundColor: Colors.transparent,
+            ),
+          ),
+        ),
+      ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        controller: _scroll,
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
           Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(16),
+              PopIn(
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(article.icon, color: scheme.primary),
                 ),
-                child: Icon(article.icon, color: scheme.primary),
               ),
               const SizedBox(width: 12),
               Text('${article.minutes} min read',
@@ -131,7 +181,12 @@ class ArticleScreen extends StatelessWidget {
                 style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
           ),
           const SizedBox(height: 10),
-          for (final b in article.blocks) _BlockView(block: b),
+          for (var i = 0; i < article.blocks.length; i++)
+            FadeSlideIn(
+              delay: staggerDelay(i, stepMs: 35, maxSteps: 6),
+              offset: 0.03,
+              child: _BlockView(block: article.blocks[i]),
+            ),
           if (article.action != LearnAction.none) ...[
             const SizedBox(height: 18),
             _ActionButton(action: article.action),

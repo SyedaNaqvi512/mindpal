@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'motion_kit.dart';
+
 /// A soft round badge with an icon and two small decorative dots.
 class ArtBadge extends StatelessWidget {
   const ArtBadge({super.key, required this.icon, this.size = 96});
@@ -80,7 +82,7 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ArtBadge(icon: icon),
+            Floating(child: ArtBadge(icon: icon)),
             const SizedBox(height: 16),
             Text(title,
                 style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),

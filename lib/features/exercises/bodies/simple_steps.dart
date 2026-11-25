@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../models/exercise_catalog.dart';
 import '../models/exercise_logic.dart';
 import '../services/exercise_controller.dart';
+import '../widgets/body_figure.dart';
 import '../widgets/breathing_bubble.dart';
 import '../widgets/safe_text_field.dart';
 import 'exercise_content.dart';
@@ -37,6 +39,7 @@ List<ExerciseStep> groundingSteps() => [
         prompt: 'Look around slowly. Tap a circle each time you notice something you can see.',
         key: 'see',
         cues: kGroundingCues['see']!,
+        visual: const StepBadge(icon: Symbols.visibility_rounded),
         count: 5,
         noun: 'thing you see',
         noteLabel: 'Optional note: what did you see?',
@@ -46,6 +49,7 @@ List<ExerciseStep> groundingSteps() => [
         prompt: 'Notice four things you can feel, such as your feet on the floor or the chair under you.',
         key: 'feel',
         cues: kGroundingCues['feel']!,
+        visual: const StepBadge(icon: Symbols.back_hand_rounded),
         count: 4,
         noun: 'thing you feel',
         noteLabel: 'Optional note: what did you feel?',
@@ -55,6 +59,7 @@ List<ExerciseStep> groundingSteps() => [
         prompt: 'Listen for three sounds, near or far.',
         key: 'hear',
         cues: kGroundingCues['hear']!,
+        visual: const StepBadge(icon: Symbols.hearing_rounded),
         count: 3,
         noun: 'sound you hear',
         noteLabel: 'Optional note: what did you hear?',
@@ -64,6 +69,7 @@ List<ExerciseStep> groundingSteps() => [
         prompt: 'Notice two things you can smell. If nothing stands out, imagine a smell you like.',
         key: 'smell',
         cues: kGroundingCues['smell']!,
+        visual: const StepBadge(icon: Symbols.local_florist_rounded),
         count: 2,
         noun: 'smell',
         noteLabel: 'Optional note: what did you smell?',
@@ -73,6 +79,7 @@ List<ExerciseStep> groundingSteps() => [
         prompt: 'Notice one thing you can taste, or take a sip of water and notice it.',
         key: 'taste',
         cues: kGroundingCues['taste']!,
+        visual: const StepBadge(icon: Symbols.restaurant_rounded),
         count: 1,
         noun: 'taste',
         noteLabel: 'Optional note: what did you taste?',
@@ -194,6 +201,7 @@ List<ExerciseStep> selfCompassionSteps([int seed = 0]) => [
             'you have read this.',
         key: 'ack',
         count: 1,
+        visual: const StepBadge(icon: Symbols.favorite_rounded),
         noun: 'reading',
       ),
       textStep(
@@ -319,6 +327,7 @@ List<ExerciseStep> stopSteps() => [
         prompt: 'Pause whatever you are doing. Let your hands rest. Tap the circle when you have stopped.',
         key: 's',
         count: 1,
+        visual: const StepBadge(letter: 'S'),
         noun: 'stop',
       ),
       tapStep(
@@ -326,18 +335,21 @@ List<ExerciseStep> stopSteps() => [
         prompt: 'Take one slow breath in and a slow breath out. Tap the circle when you have breathed.',
         key: 't',
         count: 1,
+        visual: const StepBadge(letter: 'T'),
         noun: 'breath',
       ),
       chipsStep(
         title: 'O: Observe',
         prompt: 'What do you notice? Tap what is there.',
         key: 'observe',
+        visual: const StepBadge(letter: 'O'),
         options: kObserveOptions,
       ),
       chipsStep(
         title: 'P: Proceed',
         prompt: 'What would help you proceed with kindness toward yourself?',
         key: 'proceed',
+        visual: const StepBadge(letter: 'P'),
         options: kProceedOptions,
       ),
       infoStep(
@@ -423,9 +435,25 @@ List<ExerciseStep> anchorSteps() => [
 
 // FR-73 Body scan: at most 5 minutes, text only, no audio.
 List<ExerciseStep> bodyScanSteps() => [
-      for (final a in kBodyScanAreas)
-        infoStep(title: a.$1, body: a.$2, seconds: a.$3),
+      for (final a in kBodyScanAreas) _bodyScanStep(a.$1, a.$2, a.$3),
     ];
+
+/// One area of the body scan: the figure glows where to look, then the text.
+ExerciseStep _bodyScanStep(String area, String body, int seconds) {
+  final reading = infoStep(title: area, body: body, seconds: seconds);
+  return ExerciseStep(
+    title: area,
+    minSeconds: reading.minSeconds,
+    build: (context, c) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        BodyFigure(area: area),
+        const SizedBox(height: 12),
+        reading.build(context, c),
+      ],
+    ),
+  );
+}
 
 /// Used by tests: the exercises whose steps are in this file.
 const Set<String> kSimpleExerciseIds = {

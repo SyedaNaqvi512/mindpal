@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/widgets/fade_slide_in.dart';
+import '../../../core/widgets/motion_kit.dart';
 import '../../../core/widgets/section_header.dart';
 import '../models/exercise_catalog.dart';
 import '../models/exercise_session.dart';
@@ -203,10 +205,12 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
           ],
           const SizedBox(height: 8),
           const SectionHeader('Core exercises'),
-          for (final e in core) card(e),
+          for (var i = 0; i < core.length; i++)
+            FadeSlideIn(press: true, delay: staggerDelay(i), child: card(core[i])),
           const SizedBox(height: 8),
           const SectionHeader('More activities'),
-          for (final e in more) card(e),
+          for (var i = 0; i < more.length; i++)
+            FadeSlideIn(press: true, delay: staggerDelay(i), child: card(more[i])),
         ],
       ),
     );

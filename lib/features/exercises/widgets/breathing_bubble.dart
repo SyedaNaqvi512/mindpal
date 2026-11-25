@@ -92,7 +92,7 @@ class _BreathingBubbleState extends State<BreathingBubble>
       animation: _ctl,
       builder: (context, _) {
         final (phase, size) = breathAt(_ctl.value);
-        final scale = reduced ? 0.7 : 0.45 + 0.55 * size;
+        final scale = reduced ? 0.62 : 0.34 + 0.46 * size;
         final cue = _running
             ? breathCue(phase)
             : (_finished ? 'Notice how you feel.' : 'Ready when you are');
@@ -103,34 +103,62 @@ class _BreathingBubbleState extends State<BreathingBubble>
             SizedBox(
               width: widget.size,
               height: widget.size,
-              child: Center(
-                child: Semantics(
-                  liveRegion: true,
-                  label: cue,
-                  child: Container(
-                    width: widget.size * scale,
-                    height: widget.size * scale,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: scheme.primary.withValues(alpha: 0.22),
-                      border: Border.all(color: scheme.primary, width: 3),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // How far through the whole session you are.
+                  CustomPaint(
+                    size: Size.square(widget.size),
+                    painter: _ProgressRing(
+                      progress: _running
+                          ? ((_done + _ctl.value) / widget.cycles).clamp(0.0, 1.0)
+                          : (_finished ? 1.0 : 0.0),
+                      color: scheme.primary,
                     ),
-                    child: widget.caption == null
-                        ? null
-                        : Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              widget.caption!,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurface,
+                  ),
+                  // Soft halos that follow the bubble.
+                  for (final (factor, alpha) in const [(1.22, 0.06), (1.10, 0.11)])
+                    Container(
+                      width: widget.size * scale * factor,
+                      height: widget.size * scale * factor,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: scheme.primary.withValues(alpha: alpha),
+                      ),
+                    ),
+                  Semantics(
+                    liveRegion: true,
+                    label: cue,
+                    child: Container(
+                      width: widget.size * scale,
+                      height: widget.size * scale,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            scheme.primary.withValues(alpha: 0.10),
+                            scheme.primary.withValues(alpha: 0.32),
+                          ],
+                        ),
+                        border: Border.all(color: scheme.primary, width: 3),
+                      ),
+                      child: widget.caption == null
+                          ? null
+                          : Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                widget.caption!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface,
+                                ),
                               ),
                             ),
-                          ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
@@ -155,4 +183,33 @@ class _BreathingBubbleState extends State<BreathingBubble>
       },
     );
   }
+}
+
+/// A thin ring around the bubble that fills as the breaths are done.
+class _ProgressRing extends CustomPainter {
+  _ProgressRing({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(4, 4, size.width - 8, size.height - 8);
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..color = color.withValues(alpha: 0.12);
+    canvas.drawOval(rect, track);
+    if (progress <= 0) return;
+    final arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    canvas.drawArc(rect, -1.5707963, 6.2831853 * progress, false, arc);
+  }
+
+  @override
+  bool shouldRepaint(_ProgressRing old) =>
+      old.progress != progress || old.color != color;
 }

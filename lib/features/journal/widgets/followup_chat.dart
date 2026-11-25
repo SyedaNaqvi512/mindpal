@@ -7,6 +7,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/errors/app_messages.dart';
 import '../../../core/motion/motion.dart';
 import '../../../core/widgets/inline_message.dart';
+import '../../../core/widgets/motion_kit.dart';
 import '../../../core/widgets/toast.dart';
 import '../../auth/services/auth_service.dart';
 import '../../consent/services/consent_service.dart';
@@ -583,14 +584,13 @@ class _WaitingState extends State<_Waiting> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: scheme.primaryContainer,
-            child: const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              borderRadius: BorderRadius.circular(16),
             ),
+            child: const TypingDots(size: 6),
           ),
           const SizedBox(width: 8),
           Expanded(

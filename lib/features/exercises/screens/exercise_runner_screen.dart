@@ -4,6 +4,9 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
+import '../../../core/motion/motion.dart';
+import '../../../core/widgets/fade_slide_in.dart';
+import '../../../core/widgets/motion_kit.dart';
 import '../bodies/exercise_content.dart';
 import '../bodies/exercise_registry.dart';
 import '../models/exercise_catalog.dart';
@@ -258,11 +261,14 @@ class _ExerciseRunnerScreenState extends State<ExerciseRunnerScreen> {
       padding: const EdgeInsets.all(20),
       children: [
         Center(
-          child: Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(color: scheme.primaryContainer, shape: BoxShape.circle),
-            child: Icon(info.icon, size: 40, color: scheme.primary),
+          child: Floating(
+            child: Container(
+              width: 84,
+              height: 84,
+              decoration:
+                  BoxDecoration(color: scheme.primaryContainer, shape: BoxShape.circle),
+              child: Icon(info.icon, size: 40, color: scheme.primary),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -350,16 +356,19 @@ class _ExerciseRunnerScreenState extends State<ExerciseRunnerScreen> {
     final lines = describeSession(_c.session);
     final skipped = _skippedCount();
     final felt = '${_c.session.data['after_feel'] ?? ''}';
-    return ListView(
+    return Stack(children: [
+      ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Center(
-          child: Container(
-            width: 84,
-            height: 84,
-            decoration:
-                BoxDecoration(color: scheme.primaryContainer, shape: BoxShape.circle),
-            child: Icon(Symbols.check_rounded, size: 44, color: scheme.primary),
+          child: PopIn(
+            child: Container(
+              width: 84,
+              height: 84,
+              decoration:
+                  BoxDecoration(color: scheme.primaryContainer, shape: BoxShape.circle),
+              child: Icon(Symbols.check_rounded, size: 44, color: scheme.primary),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -449,7 +458,9 @@ class _ExerciseRunnerScreenState extends State<ExerciseRunnerScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
       ],
-    );
+    ),
+      const Positioned(top: 0, left: 0, right: 0, child: Celebration()),
+    ]);
   }
 
   Widget _stepView(BuildContext context) {
@@ -465,7 +476,12 @@ class _ExerciseRunnerScreenState extends State<ExerciseRunnerScreen> {
 
     return Column(
       children: [
-        LinearProgressIndicator(value: (i + 1) / _steps.length, minHeight: 4),
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: (i + 1) / _steps.length),
+          duration: Motion.of(context, const Duration(milliseconds: 350)),
+          curve: Curves.easeOutCubic,
+          builder: (context, v, _) => LinearProgressIndicator(value: v, minHeight: 4),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
           child: Align(
@@ -494,8 +510,10 @@ class _ExerciseRunnerScreenState extends State<ExerciseRunnerScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (step.guide != null) _GuideCard(guide: step.guide!),
-                KeyedSubtree(
+                FadeSlideIn(
                   key: ValueKey('${widget.info.id}-$i'),
+                  duration: const Duration(milliseconds: 280),
+                  offset: 0.04,
                   child: step.build(context, _c),
                 ),
               ],
