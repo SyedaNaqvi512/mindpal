@@ -5,6 +5,7 @@ import '../models/exercise_logic.dart';
 import '../services/exercise_controller.dart';
 import '../widgets/breathing_bubble.dart';
 import '../widgets/safe_text_field.dart';
+import 'exercise_content.dart';
 import 'step_kit.dart';
 
 /// The shorter guided activities and the grounding exercises.
@@ -35,6 +36,7 @@ List<ExerciseStep> groundingSteps() => [
         title: '5 things you can see',
         prompt: 'Look around slowly. Tap a circle each time you notice something you can see.',
         key: 'see',
+        cues: kGroundingCues['see']!,
         count: 5,
         noun: 'thing you see',
         noteLabel: 'Optional note: what did you see?',
@@ -43,6 +45,7 @@ List<ExerciseStep> groundingSteps() => [
         title: '4 things you can feel',
         prompt: 'Notice four things you can feel, such as your feet on the floor or the chair under you.',
         key: 'feel',
+        cues: kGroundingCues['feel']!,
         count: 4,
         noun: 'thing you feel',
         noteLabel: 'Optional note: what did you feel?',
@@ -51,6 +54,7 @@ List<ExerciseStep> groundingSteps() => [
         title: '3 things you can hear',
         prompt: 'Listen for three sounds, near or far.',
         key: 'hear',
+        cues: kGroundingCues['hear']!,
         count: 3,
         noun: 'sound you hear',
         noteLabel: 'Optional note: what did you hear?',
@@ -59,6 +63,7 @@ List<ExerciseStep> groundingSteps() => [
         title: '2 things you can smell',
         prompt: 'Notice two things you can smell. If nothing stands out, imagine a smell you like.',
         key: 'smell',
+        cues: kGroundingCues['smell']!,
         count: 2,
         noun: 'smell',
         noteLabel: 'Optional note: what did you smell?',
@@ -67,6 +72,7 @@ List<ExerciseStep> groundingSteps() => [
         title: '1 thing you can taste',
         prompt: 'Notice one thing you can taste, or take a sip of water and notice it.',
         key: 'taste',
+        cues: kGroundingCues['taste']!,
         count: 1,
         noun: 'taste',
         noteLabel: 'Optional note: what did you taste?',
@@ -85,6 +91,7 @@ List<ExerciseStep> thoughtRecordSteps() => [
         prompt: 'What was happening? Who was there, where, and when?',
         key: 'situation',
         label: 'The situation',
+        ideas: kSituationIdeas,
       ),
       thoughtStep(prompt: 'What went through your mind? Write the thought as it sounded.'),
       chipsStep(
@@ -110,6 +117,7 @@ List<ExerciseStep> thoughtRecordSteps() => [
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Prompt('What makes this thought seem true? Add one item at a time.'),
+            EchoCard(c: c, items: const {'Your thought': 'thought'}),
             ItemListEditor(
               items: c.list('for'),
               label: 'Evidence for',
@@ -125,6 +133,7 @@ List<ExerciseStep> thoughtRecordSteps() => [
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Prompt('What does not fit the thought, or points another way?'),
+            EchoCard(c: c, items: const {'Your thought': 'thought'}),
             ItemListEditor(
               items: c.list('against'),
               label: 'Evidence against',
@@ -136,22 +145,20 @@ List<ExerciseStep> thoughtRecordSteps() => [
     ];
 
 // FR-40 Gratitude Reflection.
-List<ExerciseStep> gratitudeSteps() => [
+List<ExerciseStep> gratitudeSteps([int seed = 0]) => [
       chipsStep(
         title: 'Things to appreciate',
         prompt: 'Tap three things, or more, from today that you appreciate.',
         key: 'things',
-        options: const [
-          'A person who helped me', 'A good meal', 'Some rest', 'Time outdoors',
-          'A kind word', 'Something I finished', 'Music', 'A quiet moment',
-          'My own effort', 'Something that made me laugh',
-        ],
+        options: pickMany(kGratitudeThings, 12, seed),
       ),
       textStep(
         title: 'Why it matters',
-        prompt: 'Pick one of them, or something else, and write why it matters to you.',
+        prompt: pickOne(kGratitudeWhyPrompts, seed),
         key: 'why',
         label: 'Why it matters',
+        ideas: kGratitudeWhyIdeas,
+        echo: const {'You appreciated': 'things'},
       ),
       textStep(
         title: 'Carry it with you',
@@ -163,12 +170,13 @@ List<ExerciseStep> gratitudeSteps() => [
     ];
 
 // FR-40 Self-Compassion Reflection.
-List<ExerciseStep> selfCompassionSteps() => [
+List<ExerciseStep> selfCompassionSteps([int seed = 0]) => [
       textStep(
         title: 'Something hard',
         prompt: 'What is hard for you right now? A few words are enough.',
         key: 'hard',
         label: 'What is hard',
+        ideas: kHardIdeas,
       ),
       chipsStep(
         title: 'Notice what you feel',
@@ -190,10 +198,11 @@ List<ExerciseStep> selfCompassionSteps() => [
       ),
       textStep(
         title: 'A kind sentence',
-        prompt: 'Imagine a good friend felt this way. What kind thing would you '
-            'say to them? Now write it to yourself.',
+        prompt: pickOne(kKindPrompts, seed),
         key: 'kind',
         label: 'A kind sentence to myself',
+        ideas: kKindIdeas,
+        echo: const {'What is hard': 'hard', 'You feel': 'feelings'},
       ),
     ];
 
@@ -204,6 +213,7 @@ List<ExerciseStep> problemSolvingSteps() => [
         prompt: 'Describe the problem in one or two sentences.',
         key: 'problem',
         label: 'The problem',
+        ideas: kProblemIdeas,
       ),
       ExerciseStep(
         title: 'Possible options',
@@ -212,7 +222,9 @@ List<ExerciseStep> problemSolvingSteps() => [
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Prompt('List a few things you could do. They do not have to be perfect.'),
+            EchoCard(c: c, items: const {'The problem': 'problem'}),
             ItemListEditor(
+              ideas: kOptionIdeas,
               items: c.list('options'),
               label: 'An option',
               onChanged: (v) => c.set('options', v),
@@ -254,6 +266,8 @@ List<ExerciseStep> problemSolvingSteps() => [
         key: 'first',
         label: 'My first step',
         maxLines: 3,
+        ideas: kFirstStepIdeas,
+        echo: const {'You chose': 'chosen'},
       ),
       chipsStep(
         title: 'When',
@@ -265,7 +279,7 @@ List<ExerciseStep> problemSolvingSteps() => [
     ];
 
 // FR-40 Daily Check-In.
-List<ExerciseStep> checkInSteps() => [
+List<ExerciseStep> checkInSteps([int seed = 0]) => [
       sliderStep(
         title: 'Mood',
         prompt: 'How is your mood today?',
@@ -286,17 +300,15 @@ List<ExerciseStep> checkInSteps() => [
         title: 'In a few words',
         prompt: 'Tap the words that describe today so far.',
         key: 'words',
-        options: const [
-          'Calm', 'Busy', 'Anxious', 'Hopeful', 'Tired', 'Focused', 'Sad',
-          'Grateful', 'Stressed', 'Okay',
-        ],
+        options: pickMany(kCheckInWords, 12, seed),
       ),
       textStep(
         title: 'A short note',
-        prompt: 'Anything else on your mind today? This is optional.',
+        prompt: pickOne(kCheckInNotePrompts, seed),
         key: 'note',
         label: 'Note',
         maxLines: 3,
+        ideas: kCheckInNoteIdeas,
       ),
     ];
 
@@ -320,19 +332,13 @@ List<ExerciseStep> stopSteps() => [
         title: 'O: Observe',
         prompt: 'What do you notice? Tap what is there.',
         key: 'observe',
-        options: const [
-          'Thoughts', 'Feelings', 'My body', 'Sounds around me', 'Tension',
-          'Something else',
-        ],
+        options: kObserveOptions,
       ),
       chipsStep(
         title: 'P: Proceed',
         prompt: 'What would help you proceed with kindness toward yourself?',
         key: 'proceed',
-        options: const [
-          'Carry on slowly', 'Ask for help', 'Take a short walk', 'Drink some water',
-          'Write in my journal', 'Do one small task',
-        ],
+        options: kProceedOptions,
       ),
       infoStep(
         title: 'A gentle close',
@@ -348,6 +354,12 @@ const List<String> kAnchorPhrases = [
   'I can take this one step at a time.',
   'I am safe in this moment.',
   'It is okay to feel what I feel.',
+  'I have handled hard days before.',
+  'I do not have to solve everything today.',
+  'Feelings come and go like weather.',
+  'I am allowed to rest.',
+  'Slow is still moving forward.',
+  'I can ask for help.',
 ];
 
 // FR-72 Anchoring phrase. A written phrase is stored encrypted on the device.

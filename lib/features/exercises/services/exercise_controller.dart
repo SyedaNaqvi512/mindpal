@@ -6,11 +6,43 @@ import '../models/exercise_session.dart';
 /// One step of an exercise. Every step can be skipped (FR-41): when
 /// [canContinue] is false the main button reads "Skip".
 class ExerciseStep {
-  const ExerciseStep({required this.title, required this.build, this.canContinue});
+  const ExerciseStep({
+    required this.title,
+    required this.build,
+    this.canContinue,
+    this.minSeconds,
+    this.guide,
+  });
 
   final String title;
   final Widget Function(BuildContext context, ExerciseController c) build;
   final bool Function(ExerciseController c)? canContinue;
+
+  /// For timed reading steps: how long the user should stay for the step to
+  /// count as done. Leaving earlier is allowed (FR-41) but does not count.
+  final int? minSeconds;
+
+  /// A short "why this helps" with an example, shown above the step.
+  final StepGuide? guide;
+
+  ExerciseStep withGuide(StepGuide? g) => ExerciseStep(
+        title: title,
+        build: build,
+        canContinue: canContinue,
+        minSeconds: minSeconds,
+        guide: guide ?? g,
+      );
+
+  /// True when this step asks for something (an answer or some time), so
+  /// leaving it empty counts as skipped.
+  bool get asksForSomething => canContinue != null || minSeconds != null;
+}
+
+class StepGuide {
+  const StepGuide(this.why, [this.example]);
+
+  final String why;
+  final String? example;
 }
 
 /// Holds the running state of one exercise session: the answers, the current
@@ -67,6 +99,18 @@ class ExerciseController extends ChangeNotifier {
     data['_step'] = s.clamp(0, _total - 1);
     dirty = true;
     notifyListeners();
+  }
+
+  /// Remembers that a timed step was really read (used by the body scan).
+  void markDone(int index) {
+    final done = (data['_done'] is List)
+        ? [for (final e in data['_done'] as List) if (e is num) e.toInt()]
+        : <int>[];
+    if (!done.contains(index)) {
+      done.add(index);
+      data['_done'] = done;
+      dirty = true;
+    }
   }
 
   void next() => goTo(step + 1);
