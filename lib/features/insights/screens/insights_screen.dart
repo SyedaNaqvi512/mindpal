@@ -8,6 +8,7 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/fade_slide_in.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../journal/models/entry_format.dart';
 import '../../journal/models/mood.dart';
 import '../../journal/models/thinking_patterns.dart';
@@ -127,7 +128,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     if (!_loaded) {
       return Scaffold(
         appBar: AppBar(title: const Text('Insights')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const SkeletonList(count: 3, tall: true),
       );
     }
 

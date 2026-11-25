@@ -1,6 +1,10 @@
 /// Non-color design tokens (NFR-41, SRS 5.3 and 5.4).
 class AppTokens {
+  /// Body and controls: Nunito, rounded and easy to read.
   static const fontFamily = 'Nunito';
+
+  /// Titles and headings: Fraunces, a soft serif with a warm, journal feel.
+  static const displayFamily = 'Fraunces';
 
   // Corner radii
   static const radiusSmall = 12.0;

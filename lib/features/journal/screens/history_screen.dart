@@ -7,6 +7,7 @@ import '../../../core/database/database_service.dart';
 import '../../../core/entries_changes.dart';
 import '../../../core/search_text.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../insights/models/insights_calc.dart';
 import '../models/entry_format.dart';
 import '../models/entry_selection.dart';
@@ -300,7 +301,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           Expanded(
             child: !_loaded
-                ? const Center(child: CircularProgressIndicator())
+                ? const SkeletonList()
                 : _rows.isEmpty
                     ? (_filtering
                         ? EmptyState(
