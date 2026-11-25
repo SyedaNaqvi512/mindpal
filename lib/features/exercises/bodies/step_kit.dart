@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/motion/motion.dart';
 import '../services/exercise_controller.dart';
 import '../widgets/safe_text_field.dart';
+import 'exercise_content.dart';
 
 /// Small building blocks shared by the exercises. Every exercise uses touch
 /// controls (tap, slide, drag) and not only text boxes (FR-42), and none uses
@@ -30,6 +31,92 @@ class Prompt extends StatelessWidget {
   }
 }
 
+/// Tappable ideas, so nobody faces a blank page. Tapping one fills the answer,
+/// which the user can then change.
+class IdeaChips extends StatelessWidget {
+  const IdeaChips({super.key, required this.options, required this.onPick, this.label});
+
+  final List<String> options;
+  final ValueChanged<String> onPick;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label ?? 'Not sure where to start? Tap an idea.',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              for (final o in options)
+                ActionChip(
+                  label: Text(o),
+                  onPressed: () {
+                    Motion.tap();
+                    onPick(o);
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the user wrote earlier in this exercise, shown back to them so each
+/// step builds on the last.
+class EchoCard extends StatelessWidget {
+  const EchoCard({super.key, required this.c, required this.items});
+
+  final ExerciseController c;
+
+  /// Label to data key.
+  final Map<String, String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final lines = <(String, String)>[];
+    items.forEach((label, key) {
+      final v = c.data[key];
+      final t = v is List ? v.map((e) => '$e').join(', ') : '${v ?? ''}'.trim();
+      if (t.isNotEmpty) lines.add((label, t));
+    });
+    if (lines.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: scheme.primary, width: 3)),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final (label, text) in lines)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text.rich(TextSpan(children: [
+                TextSpan(
+                    text: '$label: ',
+                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+                TextSpan(text: text, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ])),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A step with one free-text answer.
 ExerciseStep textStep({
   required String title,
@@ -38,23 +125,38 @@ ExerciseStep textStep({
   String? hint,
   String? label,
   int maxLines = 4,
+  List<String> ideas = const [],
+  Map<String, String> echo = const {},
 }) {
   return ExerciseStep(
     title: title,
     canContinue: (c) => c.text(key).trim().isNotEmpty,
-    build: (context, c) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Prompt(prompt),
-        SafeTextField(
-          initial: c.text(key),
-          label: label,
-          hint: hint,
-          maxLines: maxLines,
-          onChanged: (v) => c.set(key, v),
-        ),
-      ],
-    ),
+    build: (context, c) {
+      final n = c.intOf('_n_$key');
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (echo.isNotEmpty) EchoCard(c: c, items: echo),
+          Prompt(prompt),
+          if (ideas.isNotEmpty && c.text(key).trim().isEmpty)
+            IdeaChips(
+              options: ideas,
+              onPick: (s) {
+                c.data['_n_$key'] = n + 1;
+                c.set(key, s);
+              },
+            ),
+          SafeTextField(
+            key: ValueKey('$key-$n'),
+            initial: c.text(key),
+            label: label,
+            hint: hint,
+            maxLines: maxLines,
+            onChanged: (v) => c.set(key, v),
+          ),
+        ],
+      );
+    },
   );
 }
 
@@ -194,6 +296,7 @@ ExerciseStep tapStep({
   required int count,
   required String noun,
   String? noteLabel,
+  List<String> cues = const [],
 }) {
   return ExerciseStep(
     title: title,
@@ -251,6 +354,19 @@ ExerciseStep tapStep({
             textAlign: TextAlign.center,
             style: TextStyle(color: scheme.onSurfaceVariant),
           ),
+          if (done < count && done < cues.length) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text('Next: ${cues[done]}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: scheme.onPrimaryContainer)),
+            ),
+          ],
           if (noteLabel != null) ...[
             const SizedBox(height: 16),
             SafeTextField(
@@ -275,6 +391,7 @@ ExerciseStep infoStep({
 }) {
   return ExerciseStep(
     title: title,
+    minSeconds: seconds == null ? null : (seconds * 0.8).round(),
     build: (context, c) {
       final scheme = Theme.of(context).colorScheme;
       return Column(
@@ -312,8 +429,10 @@ class ItemListEditor extends StatefulWidget {
     required this.onChanged,
     required this.label,
     this.hint,
+    this.ideas = const [],
   });
 
+  final List<String> ideas;
   final List<String> items;
   final ValueChanged<List<String>> onChanged;
   final String label;
@@ -346,6 +465,11 @@ class _ItemListEditorState extends State<ItemListEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (widget.ideas.where((i) => !widget.items.contains(i)).isNotEmpty)
+          IdeaChips(
+            options: [for (final i in widget.ideas) if (!widget.items.contains(i)) i],
+            onPick: (s) => widget.onChanged([...widget.items, s]),
+          ),
         SafeTextField(
           controller: _ctl,
           label: widget.label,
@@ -440,6 +564,15 @@ ExerciseStep thoughtStep({
               ),
             ),
           if (entry.isNotEmpty && !asked) const SizedBox(height: 12),
+          if (c.text('thought').trim().isEmpty)
+            IdeaChips(
+              label: 'Thoughts many people have. Tap one that feels close, then change it.',
+              options: kCommonThoughts,
+              onPick: (s) {
+                c.data['_prefillN'] = n + 1;
+                c.set('thought', s);
+              },
+            ),
           SafeTextField(
             key: ValueKey('thought-$n'),
             initial: c.text('thought'),

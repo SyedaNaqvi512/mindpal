@@ -3,6 +3,7 @@ import '../models/exercise_logic.dart';
 import '../models/exercise_session.dart';
 import '../services/exercise_controller.dart';
 import 'belief_steps.dart';
+import 'exercise_guides.dart';
 import 'scale_steps.dart';
 import 'simple_steps.dart';
 import 'sort_steps.dart';
@@ -10,7 +11,7 @@ import 'step_kit.dart';
 
 /// The steps of each exercise, in order. Exercises that offer a balanced
 /// thought get that optional step last (FR-48).
-List<ExerciseStep> buildSteps(ExerciseInfo info) {
+List<ExerciseStep> buildSteps(ExerciseInfo info, {int seed = 0}) {
   final steps = switch (info.id) {
     ExerciseIds.sort => [thoughtStep(), sortStep(), sortSummaryStep()],
     ExerciseIds.scale => [
@@ -39,16 +40,16 @@ List<ExerciseStep> buildSteps(ExerciseInfo info) {
     ExerciseIds.breathing => breathingSteps(),
     ExerciseIds.grounding => groundingSteps(),
     ExerciseIds.thoughtRecord => thoughtRecordSteps(),
-    ExerciseIds.gratitude => gratitudeSteps(),
-    ExerciseIds.selfCompassion => selfCompassionSteps(),
+    ExerciseIds.gratitude => gratitudeSteps(seed),
+    ExerciseIds.selfCompassion => selfCompassionSteps(seed),
     ExerciseIds.problemSolving => problemSolvingSteps(),
-    ExerciseIds.checkIn => checkInSteps(),
+    ExerciseIds.checkIn => checkInSteps(seed),
     ExerciseIds.stop => stopSteps(),
     ExerciseIds.anchor => anchorSteps(),
     ExerciseIds.bodyScan => bodyScanSteps(),
     _ => <ExerciseStep>[],
   };
-  return [...steps, if (info.balanced) balancedStep()];
+  return applyGuides(info.id, [...steps, if (info.balanced) balancedStep()]);
 }
 
 String _join(Object? v) {
@@ -139,5 +140,6 @@ List<(String, String)> describeSession(ExerciseSession s) {
   }
 
   add('Balanced thought', s.balancedThought);
+  add('How it felt afterwards', d['after_feel']);
   return out;
 }
