@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'logo_mark.dart';
+import 'motion_kit.dart';
 
 /// The two colors of the brand header: the main color and a deeper (light
 /// themes) or softer (dark theme) shade of it. Text on it uses onPrimary.
@@ -57,30 +58,44 @@ class BrandHeader extends StatelessWidget {
               Positioned(
                 top: -50,
                 right: -40,
-                child: Container(
-                  width: 190,
-                  height: 190,
-                  decoration: BoxDecoration(color: circle, shape: BoxShape.circle),
+                child: Drift(
+                  dx: 12,
+                  dy: 10,
+                  child: Container(
+                    width: 190,
+                    height: 190,
+                    decoration: BoxDecoration(color: circle, shape: BoxShape.circle),
+                  ),
                 ),
               ),
               Positioned(
                 bottom: -30,
                 left: -50,
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(color: circle, shape: BoxShape.circle),
+                child: Drift(
+                  dx: 9,
+                  dy: 12,
+                  period: 11,
+                  phase: 2,
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(color: circle, shape: BoxShape.circle),
+                  ),
                 ),
               ),
               Positioned(
                 top: 70,
                 left: 30,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: scheme.onPrimary.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
+                child: Floating(
+                  amplitude: 7,
+                  period: 5,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: scheme.onPrimary.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
               ),

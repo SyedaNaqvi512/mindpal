@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../../core/motion/motion.dart';
 import '../services/exercise_controller.dart';
 import '../widgets/safe_text_field.dart';
+import '../../../core/widgets/motion_kit.dart';
 import 'exercise_content.dart';
 
 /// Small building blocks shared by the exercises. Every exercise uses touch
@@ -26,6 +27,50 @@ class Prompt extends StatelessWidget {
         style: muted
             ? TextStyle(color: scheme.onSurfaceVariant, fontSize: 13, height: 1.4)
             : Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.45),
+      ),
+    );
+  }
+}
+
+/// A round badge with an icon or one big letter, shown above a step so each
+/// one has its own picture. It floats gently and pops in.
+class StepBadge extends StatelessWidget {
+  const StepBadge({super.key, this.icon, this.letter});
+
+  final IconData? icon;
+  final String? letter;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: PopIn(
+          child: Floating(
+            amplitude: 4,
+            child: Container(
+              width: 76,
+              height: 76,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [scheme.primaryContainer, scheme.secondaryContainer],
+                ),
+              ),
+              child: letter != null
+                  ? Text(letter!,
+                      style: TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.w800,
+                          color: scheme.primary))
+                  : Icon(icon, size: 36, color: scheme.primary),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -168,6 +213,7 @@ ExerciseStep chipsStep({
   required List<String> options,
   bool multi = true,
   String? note,
+  Widget? visual,
 }) {
   return ExerciseStep(
     title: title,
@@ -177,6 +223,7 @@ ExerciseStep chipsStep({
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          ?visual,
           Prompt(prompt),
           Wrap(
             spacing: 8,
@@ -297,6 +344,7 @@ ExerciseStep tapStep({
   required String noun,
   String? noteLabel,
   List<String> cues = const [],
+  Widget? visual,
 }) {
   return ExerciseStep(
     title: title,
@@ -307,6 +355,7 @@ ExerciseStep tapStep({
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          ?visual,
           Prompt(prompt),
           Wrap(
             alignment: WrapAlignment.center,
@@ -328,7 +377,11 @@ ExerciseStep tapStep({
                       // circle takes it back, so a mis-tap is easy to fix.
                       c.set(key, i < done ? i : i + 1);
                     },
-                    child: AnimatedContainer(
+                    child: AnimatedScale(
+                     scale: i < done ? 1.0 : 0.94,
+                     duration: Motion.of(context, const Duration(milliseconds: 220)),
+                     curve: Curves.easeOutBack,
+                     child: AnimatedContainer(
                       duration: Motion.of(context, const Duration(milliseconds: 200)),
                       width: 64,
                       height: 64,
@@ -343,6 +396,7 @@ ExerciseStep tapStep({
                           : Text('${i + 1}',
                               style: TextStyle(
                                   color: scheme.primary, fontWeight: FontWeight.w700)),
+                     ),
                     ),
                   ),
                 ),

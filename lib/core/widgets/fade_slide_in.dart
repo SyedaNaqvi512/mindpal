@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../motion/motion.dart';
+import 'motion_kit.dart';
 
 /// Fades a child in while it slides up a little. [delay] lets several blocks
 /// appear one after another (SRS 5.4). Shows the child at once when motion is reduced.
@@ -11,12 +12,16 @@ class FadeSlideIn extends StatefulWidget {
     this.delay = Duration.zero,
     this.duration = const Duration(milliseconds: 420),
     this.offset = 0.08,
+    this.press = false,
   });
 
   final Widget child;
   final Duration delay;
   final Duration duration;
   final double offset;
+
+  /// Also shrinks a little while pressed (for tappable cards).
+  final bool press;
 
   @override
   State<FadeSlideIn> createState() => _FadeSlideInState();
@@ -59,7 +64,7 @@ class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
+    final animated = FadeTransition(
       opacity: _curve,
       child: SlideTransition(
         position: Tween<Offset>(begin: Offset(0, widget.offset), end: Offset.zero)
@@ -67,5 +72,6 @@ class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStat
         child: widget.child,
       ),
     );
+    return widget.press ? Pressable(child: animated) : animated;
   }
 }
