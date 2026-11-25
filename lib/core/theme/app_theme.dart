@@ -60,19 +60,34 @@ class AppTheme {
         .textTheme
         .apply(bodyColor: p.text, displayColor: p.text);
 
-    // Headings 700, labels 600, body 400 at 16 sp (SRS 5.3)
+    // Type scale (SRS 5.3). Titles use the display serif; body, labels and
+    // controls use Nunito. Body is 16 sp with a relaxed line height.
+    TextStyle display(TextStyle? s, double size, double height,
+            [FontWeight weight = FontWeight.w600]) =>
+        (s ?? const TextStyle()).copyWith(
+          fontFamily: AppTokens.displayFamily,
+          fontSize: size,
+          height: height,
+          fontWeight: weight,
+          letterSpacing: -0.2,
+        );
+
     final textTheme = base.copyWith(
-      headlineLarge: base.headlineLarge?.copyWith(fontWeight: FontWeight.w700),
-      headlineMedium: base.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
-      headlineSmall: base.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-      titleLarge: base.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-      titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-      titleSmall: base.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-      bodyLarge: base.bodyLarge?.copyWith(fontSize: AppTokens.bodySize, fontWeight: FontWeight.w400),
-      bodyMedium: base.bodyMedium?.copyWith(fontSize: AppTokens.bodySize, fontWeight: FontWeight.w400),
-      labelLarge: base.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-      labelMedium: base.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-      labelSmall: base.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+      displayLarge: display(base.displayLarge, 40, 1.15),
+      displayMedium: display(base.displayMedium, 34, 1.15),
+      displaySmall: display(base.displaySmall, 30, 1.2),
+      headlineLarge: display(base.headlineLarge, 28, 1.2),
+      headlineMedium: display(base.headlineMedium, 24, 1.25),
+      headlineSmall: display(base.headlineSmall, 22, 1.25),
+      titleLarge: display(base.titleLarge, 20, 1.3),
+      titleMedium: base.titleMedium?.copyWith(fontSize: 17, height: 1.3, fontWeight: FontWeight.w800),
+      titleSmall: base.titleSmall?.copyWith(fontSize: 14.5, height: 1.3, fontWeight: FontWeight.w700),
+      bodyLarge: base.bodyLarge?.copyWith(fontSize: AppTokens.bodySize, height: 1.5, fontWeight: FontWeight.w400),
+      bodyMedium: base.bodyMedium?.copyWith(fontSize: AppTokens.bodySize, height: 1.5, fontWeight: FontWeight.w400),
+      bodySmall: base.bodySmall?.copyWith(fontSize: 14, height: 1.45, fontWeight: FontWeight.w400),
+      labelLarge: base.labelLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+      labelMedium: base.labelMedium?.copyWith(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+      labelSmall: base.labelSmall?.copyWith(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.2),
     );
 
     const pill = StadiumBorder();
@@ -157,6 +172,9 @@ class AppTheme {
         errorBorder: field(p.error, 1),
         focusedErrorBorder: field(p.error, 2),
         labelStyle: TextStyle(color: muted),
+        floatingLabelStyle: TextStyle(color: p.primary, fontWeight: FontWeight.w700),
+        prefixIconColor: muted,
+        suffixIconColor: muted,
         hintStyle: TextStyle(color: muted),
         errorStyle: TextStyle(color: p.error),
       ),
@@ -221,7 +239,47 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppTokens.radiusField),
         ),
       ),
-      progressIndicatorTheme: ProgressIndicatorThemeData(color: p.primary),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: p.primary,
+        linearTrackColor: p.surfaceTint,
+        circularTrackColor: p.surfaceTint,
+      ),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: p.primary,
+        selectionColor: p.primary.withValues(alpha: 0.25),
+        selectionHandleColor: p.primary,
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: p.primary,
+        inactiveTrackColor: p.surfaceTint,
+        thumbColor: p.primary,
+        overlayColor: p.primary.withValues(alpha: 0.12),
+        trackHeight: 6,
+        valueIndicatorColor: p.primary,
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: p.text,
+          borderRadius: BorderRadius.circular(AppTokens.radiusSmall),
+        ),
+        textStyle: TextStyle(color: p.background, fontFamily: AppTokens.fontFamily),
+        waitDuration: const Duration(milliseconds: 500),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: muted,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radiusField),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.radiusField),
+        ),
+      ),
+      splashColor: p.primary.withValues(alpha: 0.08),
+      highlightColor: p.primary.withValues(alpha: 0.04),
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
         TargetPlatform.android: SoftPageTransitions(),
         TargetPlatform.iOS: SoftPageTransitions(),
