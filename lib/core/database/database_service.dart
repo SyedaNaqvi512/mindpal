@@ -620,7 +620,7 @@ class DatabaseService {
     return db.rawQuery(sql, args);
   }
 
-  /// Mood and thinking pattern of every entry, oldest first, for Insights.
+  /// Mood, thinking pattern and feeling tags of every entry, oldest first, for Insights.
   /// Only small fields are read, not the journal entry text.
   static Future<List<Map<String, Object?>>> getInsightRows() async {
     final db = await database;
@@ -628,7 +628,9 @@ class DatabaseService {
     return db.rawQuery('''
       SELECT e.created_at, e.mood,
         (SELECT r.thinking_pattern FROM reflections r
-           WHERE r.entry_id = e.id ORDER BY r.id DESC LIMIT 1) AS thinking_pattern
+           WHERE r.entry_id = e.id ORDER BY r.id DESC LIMIT 1) AS thinking_pattern,
+        (SELECT group_concat(t.tag, ',') FROM entry_tags t
+           WHERE t.entry_id = e.id) AS tags
       FROM journal_entries e
       ORDER BY e.created_at ASC
     ''');
