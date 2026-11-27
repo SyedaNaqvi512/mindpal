@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/motion/motion.dart';
@@ -14,6 +16,7 @@ class MoodTrendChart extends StatefulWidget {
     required this.labels,
     required this.summary,
     this.tooltipLabels = const [],
+    this.average,
   });
 
   final List<double?> values;
@@ -26,6 +29,9 @@ class MoodTrendChart extends StatefulWidget {
 
   /// One label per value for the tooltip, for example "Thu, 22 Oct".
   final List<String> tooltipLabels;
+
+  /// Drawn as a dashed line across the chart (the average mood of the period).
+  final double? average;
 
   @override
   State<MoodTrendChart> createState() => _MoodTrendChartState();
@@ -133,6 +139,7 @@ class _MoodTrendChartState extends State<MoodTrendChart> with SingleTickerProvid
                     progress: Curves.easeOutCubic.transform(_controller.value),
                     selected: _selected,
                     tooltip: _tooltip(),
+                    average: widget.average,
                   ),
                 ),
               ),
@@ -156,6 +163,7 @@ class _TrendPainter extends CustomPainter {
     required this.progress,
     required this.selected,
     required this.tooltip,
+    this.average,
   });
 
   final List<double?> values;
@@ -168,6 +176,7 @@ class _TrendPainter extends CustomPainter {
   final double progress;
   final int? selected;
   final String? tooltip;
+  final double? average;
 
   void _draw(Canvas canvas, String s, Offset center, double fontSize) {
     final tp = TextPainter(
@@ -205,6 +214,50 @@ class _TrendPainter extends CustomPainter {
     canvas.save();
     final clipRight = progress >= 1 ? size.width : _left + w * progress + 2;
     canvas.clipRect(Rect.fromLTRB(0, 0, clipRight, size.height));
+
+    // A soft fill under each run of days that have entries.
+    var runStart = -1;
+    void fillRun(int from, int to) {
+      if (to <= from) return;
+      final path = Path()..moveTo(xFor(from), yFor(5));
+      path.lineTo(xFor(from), yFor(values[from]!));
+      for (var k = from + 1; k <= to; k++) {
+        path.lineTo(xFor(k), yFor(values[k]!));
+      }
+      path.lineTo(xFor(to), yFor(1));
+      path.lineTo(xFor(from), yFor(1));
+      path.close();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [line.withValues(alpha: 0.22), line.withValues(alpha: 0.02)],
+          ).createShader(Rect.fromLTWH(0, _top, size.width, h)),
+      );
+    }
+
+    for (var i = 0; i < n; i++) {
+      if (values[i] != null) {
+        if (runStart == -1) runStart = i;
+      } else if (runStart != -1) {
+        fillRun(runStart, i - 1);
+        runStart = -1;
+      }
+    }
+    if (runStart != -1) fillRun(runStart, n - 1);
+
+    final avg = average;
+    if (avg != null) {
+      final y = yFor(avg);
+      final dash = Paint()
+        ..color = line.withValues(alpha: 0.7)
+        ..strokeWidth = 1.5;
+      for (double x = _left; x < size.width - _right; x += 9) {
+        canvas.drawLine(Offset(x, y), Offset(math.min(x + 5, size.width - _right), y), dash);
+      }
+    }
 
     final linePaint = Paint()
       ..color = line
@@ -286,5 +339,6 @@ class _TrendPainter extends CustomPainter {
       old.progress != progress ||
       old.selected != selected ||
       old.tooltip != tooltip ||
+      old.average != average ||
       old.bubbleFill != bubbleFill;
 }
