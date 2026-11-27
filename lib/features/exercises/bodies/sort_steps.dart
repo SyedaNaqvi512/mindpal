@@ -1,3 +1,4 @@
+import '../../../core/theme/app_look.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/motion/motion.dart';
@@ -161,7 +162,7 @@ ExerciseStep sortStep() {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: hot ? 0.45 : 0.22),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppLook.of(context).cardRadius),
                 border: Border.all(color: color, width: hot ? 2.5 : 1.2),
               ),
               child: Column(

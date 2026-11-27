@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/motion/motion.dart';
+import '../../../core/theme/app_look.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_controller.dart';
@@ -167,7 +168,8 @@ class SettingsScreen extends ConsumerWidget {
       ),
     ];
 
-    Widget tile(int i) => Expanded(
+    Widget tile(int i) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
           child: _ThemeTile(
             option: options[i],
             selected: current == options[i].choice,
@@ -182,22 +184,7 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           const FadeSlideIn(child: _ProfileHeader()),
           const _SectionLabel('Appearance'),
-          Row(children: [
-            tile(0),
-            const SizedBox(width: 10),
-            tile(1),
-            const SizedBox(width: 10),
-            tile(2),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            tile(3),
-            const SizedBox(width: 10),
-            tile(4),
-            const SizedBox(width: 10),
-            const Expanded(child: SizedBox.shrink()),
-          ]),
-          const SizedBox(height: 10),
+          for (var i = 0; i < options.length; i++) tile(i),
           ValueListenableBuilder<bool>(
             valueListenable: reduceMotionSetting,
             builder: (context, reduced, _) => Card(
@@ -487,6 +474,14 @@ class _AiConsentTileState extends State<_AiConsentTile> {
 class _ThemeOption {
   const _ThemeOption({required this.choice, required this.label, required this.palettes});
 
+  /// The look that goes with the theme (System shows the light one).
+  AppLook get look => AppLook.forPalette(palettes.first.id);
+
+  /// What the tile says under the name.
+  String get description => choice == ThemeChoice.system
+      ? 'Follows your phone: ${look.name} by day, ${AppLook.night.name} at night'
+      : '${look.name}. ${look.tagline}';
+
   final ThemeChoice choice;
   final String label;
 
@@ -494,42 +489,106 @@ class _ThemeOption {
   final List<AppPalette> palettes;
 }
 
-/// A tiny preview of a palette: its background, a pill in the main color, two dots.
+/// A tiny drawing of one look in one palette: the background, a card with the
+/// look's corners and outline, a button, and the shape of the navigation bar.
 class _MiniPreview extends StatelessWidget {
-  const _MiniPreview(this.p);
+  const _MiniPreview(this.p, this.look);
 
   final AppPalette p;
+  final AppLook look;
 
   @override
   Widget build(BuildContext context) {
+    final cardRadius = (look.cardRadius * 0.45).clamp(2.0, 12.0);
+    final BoxDecoration card = switch (look.cardStyle) {
+      CardStyle.soft => BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(cardRadius),
+          boxShadow: [BoxShadow(color: p.primary.withValues(alpha: 0.25), blurRadius: 6)],
+        ),
+      CardStyle.paper => BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(cardRadius),
+          border: Border.all(color: p.text, width: 1),
+        ),
+      CardStyle.flat => BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(cardRadius),
+          border: Border.all(color: p.text.withValues(alpha: 0.2)),
+        ),
+      CardStyle.glow => BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(cardRadius),
+          border: Border.all(color: p.primary.withValues(alpha: 0.6)),
+          boxShadow: [BoxShadow(color: p.primary.withValues(alpha: 0.4), blurRadius: 8)],
+        ),
+    };
+    final btnRadius = look.buttonRadius == null ? 99.0 : (look.buttonRadius! * 0.6);
+    final BoxDecoration nav = switch (look.nav) {
+      NavStyle.floating => BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [BoxShadow(color: p.primary.withValues(alpha: 0.3), blurRadius: 4)],
+        ),
+      NavStyle.tabs => BoxDecoration(color: p.surface, border: Border(top: BorderSide(color: p.text))),
+      NavStyle.line => BoxDecoration(
+          color: p.surface,
+          border: Border(top: BorderSide(color: p.text.withValues(alpha: 0.2))),
+        ),
+      NavStyle.glow => BoxDecoration(
+          color: p.surface,
+          border: Border(top: BorderSide(color: p.primary.withValues(alpha: 0.6))),
+        ),
+    };
+    final floating = look.nav == NavStyle.floating;
+
     return Container(
       color: p.background,
-      padding: const EdgeInsets.all(8),
+      padding: EdgeInsets.fromLTRB(6, 6, 6, floating ? 5 : 0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 34,
-            height: 9,
-            decoration:
-                BoxDecoration(color: p.primary, borderRadius: BorderRadius.circular(999)),
+          Expanded(
+            child: Container(
+              decoration: card,
+              padding: const EdgeInsets.all(5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 22,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: p.text.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: 26,
+                    height: 8,
+                    decoration: BoxDecoration(
+                        color: p.primary, borderRadius: BorderRadius.circular(btnRadius)),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 7),
-          Row(
-            children: [
-              Container(
-                width: 11,
-                height: 11,
-                decoration: BoxDecoration(color: p.secondary, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 5),
-              Container(
-                width: 11,
-                height: 11,
-                decoration: BoxDecoration(color: p.accent, shape: BoxShape.circle),
-              ),
-            ],
+          const SizedBox(height: 4),
+          Container(
+            height: 8,
+            decoration: nav,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                for (var i = 0; i < 3; i++)
+                  Container(
+                    width: 6,
+                    height: 3,
+                    decoration: BoxDecoration(
+                        color: i == 0 ? p.primary : p.text.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -537,6 +596,8 @@ class _MiniPreview extends StatelessWidget {
   }
 }
 
+/// One choice in the Appearance list: a drawing of the look, the theme name
+/// written in the look's own heading font, and a one-line description.
 class _ThemeTile extends StatelessWidget {
   const _ThemeTile({required this.option, required this.selected, required this.onTap});
 
@@ -547,6 +608,7 @@ class _ThemeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final look = option.look;
 
     return Semantics(
       button: true,
@@ -567,40 +629,58 @@ class _ThemeTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.all(10),
+            child: Row(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SizedBox(
-                    height: 54,
+                    width: option.palettes.length * 58.0,
+                    height: 74,
                     child: Row(
                       children: [
-                        for (final p in option.palettes) Expanded(child: _MiniPreview(p)),
+                        for (final p in option.palettes)
+                          Expanded(child: _MiniPreview(p, AppLook.forPalette(p.id))),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 34,
-                  child: Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          option.label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      Text(
+                        option.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: look.displayFamily,
+                          fontSize: 17 * look.displayScale,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
                         ),
                       ),
-                      if (selected)
-                        Icon(Symbols.check_circle_rounded,
-                            size: 16, color: scheme.primary, fill: 1),
+                      const SizedBox(height: 2),
+                      Text(
+                        option.description,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.35,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  selected ? Symbols.check_circle_rounded : Symbols.circle,
+                  size: 22,
+                  color: selected ? scheme.primary : scheme.outline,
+                  fill: selected ? 1 : 0,
                 ),
               ],
             ),
@@ -631,7 +711,7 @@ class _AboutLogoCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppLook.of(context).cardRadius),
         border: Border.all(color: scheme.outlineVariant),
       ),
       child: Row(

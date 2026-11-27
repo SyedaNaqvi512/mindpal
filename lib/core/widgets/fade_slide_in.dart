@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../motion/motion.dart';
+import '../theme/app_look.dart';
 import 'motion_kit.dart';
 
 /// Fades a child in while it slides up a little. [delay] lets several blocks
@@ -29,19 +30,13 @@ class FadeSlideIn extends StatefulWidget {
 
 class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _curve;
+  late Animation<double> _curve;
   bool _started = false;
 
   @override
   void initState() {
     super.initState();
-    final total = widget.delay + widget.duration;
-    _controller = AnimationController(vsync: this, duration: total);
-    final begin = widget.delay.inMilliseconds / total.inMilliseconds;
-    _curve = CurvedAnimation(
-      parent: _controller,
-      curve: Interval(begin, 1.0, curve: Curves.easeOutCubic),
-    );
+    _controller = AnimationController(vsync: this);
   }
 
   @override
@@ -49,6 +44,16 @@ class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStat
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    // The look decides how long and how far things move, and which curve.
+    final look = AppLook.of(context);
+    final delay = look.scaled(widget.delay);
+    final total = delay + look.scaled(widget.duration);
+    _controller.duration = total;
+    final begin = total.inMilliseconds == 0 ? 0.0 : delay.inMilliseconds / total.inMilliseconds;
+    _curve = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(begin, 1.0, curve: look.enterCurve),
+    );
     if (Motion.reduced(context)) {
       _controller.value = 1;
     } else {
@@ -64,10 +69,11 @@ class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final offset = widget.offset * AppLook.of(context).slideScale;
     final animated = FadeTransition(
       opacity: _curve,
       child: SlideTransition(
-        position: Tween<Offset>(begin: Offset(0, widget.offset), end: Offset.zero)
+        position: Tween<Offset>(begin: Offset(0, offset), end: Offset.zero)
             .animate(_curve),
         child: widget.child,
       ),

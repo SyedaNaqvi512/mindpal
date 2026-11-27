@@ -1,3 +1,4 @@
+import '../../../core/theme/app_look.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -364,7 +365,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 padding: const EdgeInsets.only(right: 24),
                                 decoration: BoxDecoration(
                                   color: scheme.error,
-                                  borderRadius: BorderRadius.circular(24),
+                                  borderRadius: BorderRadius.circular(AppLook.of(context).cardRadius),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,

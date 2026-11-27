@@ -1,3 +1,4 @@
+import '../../core/theme/app_look.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -65,7 +66,7 @@ class _ArticleCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppLook.of(context).fieldRadius),
                 ),
                 child: Icon(article.icon, color: scheme.primary),
               ),
@@ -164,7 +165,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
                   height: 48,
                   decoration: BoxDecoration(
                     color: scheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppLook.of(context).fieldRadius),
                   ),
                   child: Icon(article.icon, color: scheme.primary),
                 ),

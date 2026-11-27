@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/motion_kit.dart';
+import 'app_look.dart';
 import 'app_palette.dart';
 import 'app_tokens.dart';
 
@@ -15,6 +16,7 @@ class AppTheme {
       p.primary.withValues(alpha: p.isDark ? 0.20 : 0.10), p.surface);
 
   static ThemeData build(AppPalette p) {
+    final look = AppLook.forPalette(p.id);
     final surface = p.surface;
     final muted = mutedText(p);
     final selectedFill = AppTheme.selectedFill(p);
@@ -56,17 +58,17 @@ class AppTheme {
       shadow: p.primary,
     );
 
-    final base = ThemeData(brightness: scheme.brightness, fontFamily: AppTokens.fontFamily)
+    final base = ThemeData(brightness: scheme.brightness, fontFamily: look.bodyFamily)
         .textTheme
         .apply(bodyColor: p.text, displayColor: p.text);
 
-    // Type scale (SRS 5.3). Titles use the display serif; body, labels and
-    // controls use Nunito. Body is 16 sp with a relaxed line height.
+    // Type scale (SRS 5.3). Titles use the look's display font; body, labels
+    // and controls use its body font. Body is 16 sp with a relaxed line height.
     TextStyle display(TextStyle? s, double size, double height,
             [FontWeight weight = FontWeight.w600]) =>
         (s ?? const TextStyle()).copyWith(
-          fontFamily: AppTokens.displayFamily,
-          fontSize: size,
+          fontFamily: look.displayFamily,
+          fontSize: size * look.displayScale,
           height: height,
           fontWeight: weight,
           letterSpacing: -0.2,
@@ -82,47 +84,69 @@ class AppTheme {
       titleLarge: display(base.titleLarge, 20, 1.3),
       titleMedium: base.titleMedium?.copyWith(fontSize: 17, height: 1.3, fontWeight: FontWeight.w800),
       titleSmall: base.titleSmall?.copyWith(fontSize: 14.5, height: 1.3, fontWeight: FontWeight.w700),
-      bodyLarge: base.bodyLarge?.copyWith(fontSize: AppTokens.bodySize, height: 1.5, fontWeight: FontWeight.w400),
-      bodyMedium: base.bodyMedium?.copyWith(fontSize: AppTokens.bodySize, height: 1.5, fontWeight: FontWeight.w400),
+      bodyLarge: base.bodyLarge?.copyWith(fontSize: AppTokens.bodySize, height: look.bodyLineHeight, fontWeight: FontWeight.w400),
+      bodyMedium: base.bodyMedium?.copyWith(fontSize: AppTokens.bodySize, height: look.bodyLineHeight, fontWeight: FontWeight.w400),
       bodySmall: base.bodySmall?.copyWith(fontSize: 14, height: 1.45, fontWeight: FontWeight.w400),
       labelLarge: base.labelLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2),
       labelMedium: base.labelMedium?.copyWith(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.2),
       labelSmall: base.labelSmall?.copyWith(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.2),
     );
 
-    const pill = StadiumBorder();
+    final pill = look.buttonShape;
     const minButton = Size(AppTokens.minTouch, AppTokens.minTouch);
 
     OutlineInputBorder field(Color color, double width) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTokens.radiusField),
+          borderRadius: BorderRadius.circular(look.fieldRadius),
           borderSide: BorderSide(color: color, width: width),
         );
+
+    final cardShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(look.cardRadius),
+      side: switch (look.cardStyle) {
+        CardStyle.soft =>
+          BorderSide(color: p.primary.withValues(alpha: p.isDark ? 0.18 : 0.08)),
+        CardStyle.paper => BorderSide(color: p.text.withValues(alpha: 0.45), width: 1.2),
+        CardStyle.flat => BorderSide(color: p.text.withValues(alpha: 0.12)),
+        CardStyle.glow => BorderSide(color: p.primary.withValues(alpha: 0.40)),
+      },
+    );
+    final cardTheme = CardThemeData(
+      color: surface,
+      elevation: switch (look.cardStyle) {
+        CardStyle.soft => 3,
+        CardStyle.glow => 6,
+        _ => 0,
+      },
+      shadowColor: p.primary.withValues(alpha: look.cardStyle == CardStyle.glow ? 0.35 : 0.20),
+      surfaceTintColor: Colors.transparent,
+      margin: EdgeInsets.zero,
+      shape: cardShape,
+    );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: AppTokens.fontFamily,
+      fontFamily: look.bodyFamily,
       textTheme: textTheme,
-      scaffoldBackgroundColor: p.background,
+      extensions: [AppLookExtension(look)],
+      // Transparent so the look's background (AppBackdrop) shows through.
+      scaffoldBackgroundColor: Colors.transparent,
       appBarTheme: AppBarTheme(
         backgroundColor: p.background,
         foregroundColor: p.text,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: false,
+        centerTitle: look.centerTitles,
         titleTextStyle: textTheme.titleLarge,
+        shape: switch (look.cardStyle) {
+          CardStyle.paper => Border(
+              bottom: BorderSide(color: p.text.withValues(alpha: 0.35), width: 1)),
+          CardStyle.flat => Border(
+              bottom: BorderSide(color: p.text.withValues(alpha: 0.10), width: 1)),
+          _ => null,
+        },
       ),
-      cardTheme: CardThemeData(
-        color: surface,
-        elevation: 3,
-        shadowColor: p.primary.withValues(alpha: 0.20),
-        surfaceTintColor: Colors.transparent,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTokens.radiusCard),
-          side: BorderSide(color: p.primary.withValues(alpha: p.isDark ? 0.18 : 0.08)),
-        ),
-      ),
+      cardTheme: cardTheme,
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: p.primary,
@@ -218,25 +242,25 @@ class AppTheme {
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTokens.radiusSheet),
+          borderRadius: BorderRadius.circular(look.sheetRadius),
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         showDragHandle: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTokens.radiusSheet)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(look.sheetRadius)),
         ),
       ),
       dividerTheme: DividerThemeData(color: p.surfaceTint, thickness: 1),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: p.text,
-        contentTextStyle: TextStyle(color: p.background, fontFamily: AppTokens.fontFamily),
+        contentTextStyle: TextStyle(color: p.background, fontFamily: look.bodyFamily),
         actionTextColor: p.isDark ? p.background : p.accent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTokens.radiusField),
+          borderRadius: BorderRadius.circular(look.fieldRadius),
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -262,20 +286,20 @@ class AppTheme {
           color: p.text,
           borderRadius: BorderRadius.circular(AppTokens.radiusSmall),
         ),
-        textStyle: TextStyle(color: p.background, fontFamily: AppTokens.fontFamily),
+        textStyle: TextStyle(color: p.background, fontFamily: look.bodyFamily),
         waitDuration: const Duration(milliseconds: 500),
       ),
       listTileTheme: ListTileThemeData(
         iconColor: muted,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTokens.radiusField),
+          borderRadius: BorderRadius.circular(look.fieldRadius),
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTokens.radiusField),
+          borderRadius: BorderRadius.circular(look.fieldRadius),
         ),
       ),
       splashColor: p.primary.withValues(alpha: 0.08),

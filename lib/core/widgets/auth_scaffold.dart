@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/app_look.dart';
 import 'logo_mark.dart';
-import 'motion_kit.dart';
+import 'look_art.dart';
 
 /// The two colors of the brand header: the main color and a deeper (light
 /// themes) or softer (dark theme) shade of it. Text on it uses onPrimary.
@@ -29,7 +30,8 @@ class BrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final circle = scheme.onPrimary.withValues(alpha: 0.10);
+    final look = AppLook.of(context);
+    final radius = Radius.circular(look.headerRadius);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: scheme.brightness == Brightness.dark
@@ -37,68 +39,30 @@ class BrandHeader extends StatelessWidget {
           : SystemUiOverlayStyle.light,
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: brandGradient(scheme),
-          ),
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
-          boxShadow: [
-            BoxShadow(
-              color: scheme.primary.withValues(alpha: 0.30),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          color: look.gradientHeader ? null : scheme.primary,
+          gradient: look.gradientHeader
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: brandGradient(scheme),
+                )
+              : null,
+          borderRadius: BorderRadius.vertical(bottom: radius),
+          boxShadow: look.cardStyle == CardStyle.soft || look.cardStyle == CardStyle.glow
+              ? [
+                  BoxShadow(
+                    color: scheme.primary.withValues(alpha: 0.30),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ]
+              : const [],
         ),
         child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
+          borderRadius: BorderRadius.vertical(bottom: radius),
           child: Stack(
             children: [
-              Positioned(
-                top: -50,
-                right: -40,
-                child: Drift(
-                  dx: 12,
-                  dy: 10,
-                  child: Container(
-                    width: 190,
-                    height: 190,
-                    decoration: BoxDecoration(color: circle, shape: BoxShape.circle),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -30,
-                left: -50,
-                child: Drift(
-                  dx: 9,
-                  dy: 12,
-                  period: 11,
-                  phase: 2,
-                  child: Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(color: circle, shape: BoxShape.circle),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 70,
-                left: 30,
-                child: Floating(
-                  amplitude: 7,
-                  period: 5,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: scheme.onPrimary.withValues(alpha: 0.18),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
+              const HeaderArt(),
               Padding(padding: padding, child: child),
             ],
           ),
@@ -209,7 +173,7 @@ class AuthScaffold extends StatelessWidget {
                           elevation: 8,
                           shadowColor: scheme.primary.withValues(alpha: 0.30),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
+                            borderRadius: BorderRadius.circular(AppLook.of(context).cardRadius),
                             side: BorderSide(
                               color: scheme.primary.withValues(alpha: 0.10),
                             ),
