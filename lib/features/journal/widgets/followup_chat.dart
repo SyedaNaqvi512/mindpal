@@ -1,3 +1,4 @@
+import '../../../core/theme/app_look.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -446,15 +447,16 @@ class _Bubble extends StatelessWidget {
     final fg = user ? scheme.onPrimary : scheme.onSurface;
     final bg = user ? scheme.primary : scheme.surfaceContainerHighest;
 
+    final r = AppLook.of(context).fieldRadius;
     final bubble = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: pending ? bg.withValues(alpha: 0.7) : bg,
         borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(18),
-          topRight: const Radius.circular(18),
-          bottomLeft: Radius.circular(user ? 18 : 4),
-          bottomRight: Radius.circular(user ? 4 : 18),
+          topLeft: Radius.circular(r),
+          topRight: Radius.circular(r),
+          bottomLeft: Radius.circular(user ? r : 4),
+          bottomRight: Radius.circular(user ? 4 : r),
         ),
       ),
       child: ChatText(message.content, color: fg),
@@ -588,7 +590,7 @@ class _WaitingState extends State<_Waiting> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
               color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppLook.of(context).fieldRadius),
             ),
             child: const TypingDots(size: 6),
           ),

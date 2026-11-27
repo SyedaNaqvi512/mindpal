@@ -1,3 +1,4 @@
+import '../../../core/theme/app_look.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -465,7 +466,7 @@ class _ReflectArt extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppLook.of(context).fieldRadius),
                 ),
                 child: Row(
                   children: [

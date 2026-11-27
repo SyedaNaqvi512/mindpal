@@ -1,3 +1,4 @@
+import '../../../core/theme/app_look.dart';
 import 'package:flutter/material.dart';
 
 import '../models/mood.dart';
@@ -28,13 +29,13 @@ class MoodPicker extends StatelessWidget {
               selected: value == m.value,
               label: '${m.label} mood',
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppLook.of(context).fieldRadius),
                 onTap: enabled ? () => onChanged(m.value) : null,
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppLook.of(context).fieldRadius),
                     color: value == m.value ? scheme.primaryContainer : null,
                     border: Border.all(
                       color: value == m.value

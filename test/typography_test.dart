@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mindpal/core/motion/motion.dart';
+import 'package:mindpal/core/theme/app_look.dart';
 import 'package:mindpal/core/theme/app_palette.dart';
 import 'package:mindpal/core/theme/app_theme.dart';
-import 'package:mindpal/core/theme/app_tokens.dart';
 import 'package:mindpal/core/widgets/skeleton.dart';
 
 void main() {
@@ -11,12 +11,13 @@ void main() {
 
   for (final p in AppPalette.all) {
     test('${p.name}: titles use the display font and body stays 16 sp', () {
+      final look = AppLook.forPalette(p.id);
       final t = AppTheme.build(p).textTheme;
       for (final s in [t.displaySmall, t.headlineMedium, t.headlineSmall, t.titleLarge]) {
-        expect(s!.fontFamily, AppTokens.displayFamily);
+        expect(s!.fontFamily, look.displayFamily);
       }
       for (final s in [t.bodyLarge, t.bodyMedium, t.titleMedium, t.labelLarge]) {
-        expect(s!.fontFamily == null || s.fontFamily == AppTokens.fontFamily, isTrue);
+        expect(s!.fontFamily == null || s.fontFamily == look.bodyFamily, isTrue);
       }
       expect(t.bodyMedium!.fontSize, 16); // SRS 5.3
       expect(t.bodyMedium!.height, greaterThanOrEqualTo(1.4));

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'look_art.dart';
 import 'motion_kit.dart';
 
-/// A soft round badge with an icon and two small decorative dots.
+/// The picture on empty states. Its drawing follows the current look.
 class ArtBadge extends StatelessWidget {
   const ArtBadge({super.key, required this.icon, this.size = 96});
 
@@ -10,51 +11,8 @@ class ArtBadge extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ExcludeSemantics(
-      child: SizedBox(
-        width: size + 24,
-        height: size + 16,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [scheme.primaryContainer, scheme.secondaryContainer],
-                ),
-              ),
-              child: Icon(icon, size: size * 0.46, color: scheme.primary),
-            ),
-            Positioned(
-              right: 4,
-              top: 4,
-              child: Container(
-                width: size * 0.16,
-                height: size * 0.16,
-                decoration: BoxDecoration(color: scheme.tertiary, shape: BoxShape.circle),
-              ),
-            ),
-            Positioned(
-              left: 6,
-              bottom: 8,
-              child: Container(
-                width: size * 0.1,
-                height: size * 0.1,
-                decoration: BoxDecoration(color: scheme.secondary, shape: BoxShape.circle),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      ExcludeSemantics(child: LookBadge(icon: icon, size: size));
 }
 
 class EmptyState extends StatelessWidget {

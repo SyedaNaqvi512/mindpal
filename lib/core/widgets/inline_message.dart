@@ -1,3 +1,4 @@
+import '../theme/app_look.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -19,7 +20,7 @@ class InlineMessage extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isError ? scheme.errorContainer : scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppLook.of(context).fieldRadius),
           border: Border.all(color: accent.withValues(alpha: 0.5)),
         ),
         child: Row(

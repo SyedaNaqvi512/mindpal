@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../motion/motion.dart';
+import '../theme/app_look.dart';
+import 'app_backdrop.dart';
 
 /// Gentle animations that make the app feel alive. Every one of them:
 ///  * shows the finished state at once when Reduce motion is on (SRS 5.4),
@@ -65,9 +67,12 @@ class Floating extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = AppLook.of(context);
+    final amp = amplitude * look.floatScale;
+    final per = period * look.periodScale;
     return Ambient(
       builder: (context, t) => Transform.translate(
-        offset: Offset(0, math.sin(t * 2 * math.pi / period) * amplitude),
+        offset: Offset(0, math.sin(t * 2 * math.pi / per) * amp),
         child: child,
       ),
       seconds: 30,
@@ -95,11 +100,13 @@ class Drift extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = AppLook.of(context);
+    final per = period * look.periodScale;
     return Ambient(
       builder: (context, t) {
-        final a = t * 2 * math.pi / period + phase;
+        final a = t * 2 * math.pi / per + phase;
         return Transform.translate(
-          offset: Offset(math.sin(a) * dx, math.cos(a) * dy),
+          offset: Offset(math.sin(a) * dx * look.floatScale, math.cos(a) * dy * look.floatScale),
           child: child,
         );
       },
@@ -118,20 +125,23 @@ class PopIn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (Motion.reduced(context)) return child;
-    final total = delay + const Duration(milliseconds: 700);
-    final begin = delay.inMilliseconds / total.inMilliseconds;
+    final look = AppLook.of(context);
+    final total = look.scaled(delay + const Duration(milliseconds: 700));
+    final begin = look.scaled(delay).inMilliseconds / total.inMilliseconds;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: total,
-      curve: Interval(begin, 1, curve: Curves.elasticOut),
+      curve: Interval(begin, 1, curve: look.popCurve),
       builder: (context, v, child) => Transform.scale(scale: v, child: child),
       child: child,
     );
   }
 }
 
-/// A short burst of coloured confetti in the theme colours, once. It never
-/// blocks taps and is left out when Reduce motion is on.
+/// A short burst that celebrates a finished exercise. Its form follows the
+/// look: confetti (Soft & Rounded), falling petals (Paper Journal), expanding
+/// rings (Clean & Minimal) or rising sparkles (Night Glow). It plays once,
+/// never blocks taps and is left out when Reduce motion is on.
 class Celebration extends StatefulWidget {
   const Celebration({super.key, this.height = 240});
 
@@ -156,6 +166,8 @@ class _CelebrationState extends State<Celebration> with SingleTickerProviderStat
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    final look = AppLook.of(context);
+    _c.duration = look.scaled(const Duration(milliseconds: 2000));
     if (!Motion.reduced(context)) _c.forward();
   }
 
@@ -170,6 +182,12 @@ class _CelebrationState extends State<Celebration> with SingleTickerProviderStat
     if (Motion.reduced(context)) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     final colors = [scheme.primary, scheme.secondary, scheme.tertiary, scheme.error];
+    final kind = switch (AppLook.of(context).motion) {
+      MotionStyle.bouncy => CelebrationKind.confetti,
+      MotionStyle.gentle => CelebrationKind.petals,
+      MotionStyle.crisp => CelebrationKind.rings,
+      MotionStyle.dreamy => CelebrationKind.sparkles,
+    };
     return ExcludeSemantics(
       child: IgnorePointer(
         child: SizedBox(
@@ -177,7 +195,8 @@ class _CelebrationState extends State<Celebration> with SingleTickerProviderStat
           width: double.infinity,
           child: AnimatedBuilder(
             animation: _c,
-            builder: (context, _) => CustomPaint(painter: ConfettiPainter(_c.value, colors)),
+            builder: (context, _) =>
+                CustomPaint(painter: ConfettiPainter(_c.value, colors, kind)),
           ),
         ),
       ),
@@ -185,44 +204,96 @@ class _CelebrationState extends State<Celebration> with SingleTickerProviderStat
   }
 }
 
+enum CelebrationKind { confetti, petals, rings, sparkles }
+
 class ConfettiPainter extends CustomPainter {
-  ConfettiPainter(this.t, this.colors);
+  ConfettiPainter(this.t, this.colors, [this.kind = CelebrationKind.confetti]);
 
   final double t;
   final List<Color> colors;
+  final CelebrationKind kind;
 
   static const int count = 30;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rnd = math.Random(11);
     final origin = Offset(size.width / 2, size.height * 0.28);
-    final secs = t * 2.0;
-    for (var i = 0; i < count; i++) {
-      final angle = -math.pi * (0.1 + 0.8 * rnd.nextDouble());
-      final speed = 120 + 220 * rnd.nextDouble();
-      final spin = rnd.nextDouble() * math.pi;
-      final w = 5 + 5 * rnd.nextDouble();
-      final color = colors[i % colors.length];
-      final x = origin.dx + math.cos(angle) * speed * secs;
-      final y = origin.dy + math.sin(angle) * speed * secs + 260 * secs * secs;
-      final fade = t < 0.65 ? 1.0 : (1 - (t - 0.65) / 0.35).clamp(0.0, 1.0);
-      final paint = Paint()..color = color.withValues(alpha: 0.9 * fade);
-      canvas.save();
-      canvas.translate(x, y);
-      canvas.rotate(spin + secs * 4);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset.zero, width: w, height: w * 1.6),
-            const Radius.circular(2)),
-        paint,
-      );
-      canvas.restore();
+    final fade = t < 0.65 ? 1.0 : (1 - (t - 0.65) / 0.35).clamp(0.0, 1.0);
+    switch (kind) {
+      case CelebrationKind.rings:
+        for (var i = 0; i < 3; i++) {
+          final local = ((t * 1.6) - i * 0.22).clamp(0.0, 1.0);
+          if (local <= 0) continue;
+          canvas.drawCircle(
+            origin,
+            30 + 130 * Curves.easeOutCubic.transform(local),
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.5
+              ..color = colors[i % colors.length].withValues(alpha: 0.7 * (1 - local)),
+          );
+        }
+        return;
+      case CelebrationKind.sparkles:
+        final r = math.Random(5);
+        for (var i = 0; i < 22; i++) {
+          final x = size.width * (0.1 + 0.8 * r.nextDouble());
+          final startY = size.height * (0.55 + 0.4 * r.nextDouble());
+          final rise = 70 + 110 * r.nextDouble();
+          final delay = 0.25 * r.nextDouble();
+          final local = ((t - delay) / (1 - delay)).clamp(0.0, 1.0);
+          if (local <= 0) continue;
+          final y = startY - rise * Curves.easeOut.transform(local);
+          final twinkle = 0.5 + 0.5 * math.sin(local * math.pi * 3 + i);
+          final a = (math.sin(local * math.pi)).clamp(0.0, 1.0) * twinkle;
+          final s = 3 + 4 * r.nextDouble();
+          final paint = Paint()..color = colors[i % colors.length].withValues(alpha: 0.9 * a);
+          final path = Path()
+            ..moveTo(x, y - s * 1.6)
+            ..quadraticBezierTo(x, y, x + s * 1.6, y)
+            ..quadraticBezierTo(x, y, x, y + s * 1.6)
+            ..quadraticBezierTo(x, y, x - s * 1.6, y)
+            ..quadraticBezierTo(x, y, x, y - s * 1.6);
+          canvas.drawPath(path, paint);
+        }
+        return;
+      case CelebrationKind.petals:
+      case CelebrationKind.confetti:
+        final rnd = math.Random(11);
+        final secs = t * 2.0;
+        final petals = kind == CelebrationKind.petals;
+        for (var i = 0; i < count; i++) {
+          final angle = -math.pi * (0.1 + 0.8 * rnd.nextDouble());
+          final speed = (petals ? 50 : 120) + (petals ? 90 : 220) * rnd.nextDouble();
+          final spin = rnd.nextDouble() * math.pi;
+          final w = 5 + 5 * rnd.nextDouble();
+          final color = colors[i % colors.length];
+          final gravity = petals ? 110.0 : 260.0;
+          final sway = petals ? math.sin(secs * 3 + i) * 14 : 0.0;
+          final x = origin.dx + math.cos(angle) * speed * secs + sway;
+          final y = origin.dy + math.sin(angle) * speed * secs + gravity * secs * secs;
+          final paint = Paint()..color = color.withValues(alpha: 0.9 * fade);
+          canvas.save();
+          canvas.translate(x, y);
+          canvas.rotate(spin + secs * (petals ? 2 : 4));
+          if (petals) {
+            canvas.drawOval(
+                Rect.fromCenter(center: Offset.zero, width: w * 1.8, height: w), paint);
+          } else {
+            canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                  Rect.fromCenter(center: Offset.zero, width: w, height: w * 1.6),
+                  const Radius.circular(2)),
+              paint,
+            );
+          }
+          canvas.restore();
+        }
     }
   }
 
   @override
-  bool shouldRepaint(ConfettiPainter old) => old.t != t;
+  bool shouldRepaint(ConfettiPainter old) => old.t != t || old.kind != kind;
 }
 
 /// A page change that fades and slides in a little, instead of a hard cut.
@@ -237,13 +308,19 @@ class SoftPageTransitions extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    if (Motion.reduced(context)) return child;
-    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-    return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero).animate(curved),
-        child: child,
+    // The background belongs to the route, outside the fade, so the page
+    // underneath is hidden at once and nothing overlaps while it moves.
+    if (Motion.reduced(context)) return AppBackdrop(child: child);
+    final look = AppLook.of(context);
+    final curved = CurvedAnimation(parent: animation, curve: look.enterCurve);
+    return AppBackdrop(
+      child: FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: Offset(0.05 * look.slideScale, 0), end: Offset.zero)
+              .animate(curved),
+          child: child,
+        ),
       ),
     );
   }
@@ -280,7 +357,7 @@ class _PressableState extends State<Pressable> {
       onPointerUp: (_) => _set(false),
       onPointerCancel: (_) => _set(false),
       child: AnimatedScale(
-        scale: _down && !Motion.reduced(context) ? 0.97 : 1.0,
+        scale: _down && !Motion.reduced(context) ? AppLook.of(context).pressScale : 1.0,
         duration: Motion.of(context, const Duration(milliseconds: 110)),
         curve: Curves.easeOut,
         child: widget.child,
