@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -15,12 +17,13 @@ import '../../../core/widgets/section_header.dart';
 import '../../account/models/user_profile.dart';
 import '../../account/services/profile_store.dart';
 import '../../account/widgets/avatar_image.dart';
+import '../../insights/models/analytics_calc.dart';
 import '../../insights/models/insights_calc.dart';
 import '../../journal/models/entry_format.dart';
 import '../../journal/models/mood.dart';
 import '../../exercises/screens/exercise_library_screen.dart';
-import '../../learn/learn_screen.dart';
 import '../../journal/widgets/entry_tile.dart';
+import '../../widget/widget_bridge.dart';
 
 typedef NewEntryCallback = void Function({int? mood, String? text});
 
@@ -43,7 +46,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _recent = [];
   WeekSummary? _week;
-  int _streak = 0;
+  GentleStreak _streak = GentleStreak.none;
   bool _loaded = false;
   int? _picked;
 
@@ -65,9 +68,11 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _recent = rows;
         _week = weekSummary(byDay, today);
-        _streak = currentStreak(byDay, today);
+        _streak = gentleStreak(byDay, today);
         _loaded = true;
       });
+      // Keeps the home-screen widget's count up to date (a number, no text).
+      unawaited(WidgetBridge.instance.setDays(_streak.days));
     } catch (_) {
       if (mounted) setState(() => _loaded = true);
     }
@@ -106,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.fromLTRB(20, top + 14, 20, 56),
             child: _Hero(
               greeting: greetingForHour(now.hour),
-              streak: _streak,
+              streak: _streak.days,
               weekEntries: _week?.entries ?? 0,
             ),
           ),
@@ -202,39 +207,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text('Exercises', style: TextStyle(fontWeight: FontWeight.w700)),
                               SizedBox(height: 2),
                               Text('Short guided activities: sort, weigh, slide, breathe'),
-                            ],
-                          ),
-                        ),
-                        Icon(Symbols.chevron_right_rounded, color: scheme.primary),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            FadeSlideIn(
-              press: true,
-              delay: const Duration(milliseconds: 240),
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const LearnScreen()),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        _Badge(icon: Symbols.menu_book_rounded),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Learn', style: TextStyle(fontWeight: FontWeight.w700)),
-                              SizedBox(height: 2),
-                              Text('Short reads on mindfulness, available offline'),
                             ],
                           ),
                         ),
@@ -410,8 +382,8 @@ class _Hero extends StatelessWidget {
                 pill(Symbols.calendar_today_rounded, date),
                 if (streak > 0)
                   pill(Symbols.local_fire_department_rounded,
-                      '$streak day${streak == 1 ? '' : 's'} streak',
-                      count: streak, suffix: ' day${streak == 1 ? '' : 's'} streak'),
+                      '$streak day${streak == 1 ? '' : 's'} of writing',
+                      count: streak, suffix: ' day${streak == 1 ? '' : 's'} of writing'),
                 pill(Symbols.edit_note_rounded, '$weekEntries this week',
                     count: weekEntries, suffix: ' this week'),
               ],
@@ -427,7 +399,7 @@ class _WeekCard extends StatelessWidget {
   const _WeekCard({required this.week, required this.streak});
 
   final WeekSummary? week;
-  final int streak;
+  final GentleStreak streak;
 
   @override
   Widget build(BuildContext context) {
@@ -455,7 +427,7 @@ class _WeekCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: Text('Your week', style: text.titleMedium)),
-                if (streak > 0)
+                if (streak.days > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -469,7 +441,7 @@ class _WeekCard extends StatelessWidget {
                             size: 16, color: scheme.onTertiaryContainer),
                         const SizedBox(width: 4),
                         Text(
-                          '$streak day${streak == 1 ? '' : 's'} in a row',
+                          '${streak.days} day${streak.days == 1 ? '' : 's'} of writing',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -483,6 +455,11 @@ class _WeekCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(summary, style: TextStyle(color: scheme.onSurfaceVariant)),
+            if (streak.best > 0) ...[
+              const SizedBox(height: 2),
+              Text(gentleStreakMessage(streak),
+                  style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+            ],
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

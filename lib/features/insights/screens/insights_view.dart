@@ -15,6 +15,7 @@ import '../widgets/chart_colors.dart';
 import '../widgets/donut_chart.dart';
 import '../widgets/mood_calendar.dart';
 import '../widgets/mood_trend_chart.dart';
+import 'pattern_tracker_screen.dart';
 
 /// The Insights page content (FR-27 to FR-29 and the Part 8 charts): one
 /// period choice at the top drives every chart. It only draws what it is
@@ -26,6 +27,7 @@ class InsightsView extends StatefulWidget {
     required this.rows,
     required this.exercises,
     required this.onDayTap,
+    this.onExport,
     this.today,
   });
 
@@ -33,6 +35,10 @@ class InsightsView extends StatefulWidget {
   final List<Map<String, Object?>> rows;
   final List<ExerciseDone> exercises;
   final ValueChanged<DateTime> onDayTap;
+
+  /// Called with the chosen period (7, 30, 90 or 0 for all time) when the
+  /// person asks for the PDF summary. Null hides the card.
+  final ValueChanged<int>? onExport;
 
   /// For tests; defaults to now.
   final DateTime? today;
@@ -94,7 +100,7 @@ class _InsightsViewState extends State<InsightsView> {
         ? 'No entries in this period.'
         : 'Average mood ${avg.toStringAsFixed(1)} '
             '${Mood.all[moodIndex(avg)].emoji} ${Mood.all[moodIndex(avg)].label}';
-    final streak = currentStreak(byDay, today);
+    final streak = gentleStreak(byDay, today).days;
     final notes = highlights(rows: widget.rows, today: today, days: _days);
 
     // ---- Mood mix ----
@@ -265,7 +271,7 @@ class _InsightsViewState extends State<InsightsView> {
                 'Average mood',
               ),
               const SizedBox(width: 10),
-              stat(Symbols.local_fire_department_rounded, '$streak', 'Day streak'),
+              stat(Symbols.local_fire_department_rounded, '$streak', 'Days of writing'),
             ],
           ),
         ),
@@ -418,9 +424,42 @@ class _InsightsViewState extends State<InsightsView> {
               const SizedBox(height: 8),
               note('These are suggestions found in your reflections, not '
                   'diagnoses. MindPal is not therapy.'),
+              const SizedBox(height: 4),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  icon: const Icon(Symbols.pattern_rounded, size: 18),
+                  label: const Text('See all patterns'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PatternTrackerScreen()),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+        if (widget.onExport != null)
+          card(
+            'Share a summary',
+            subtitle: 'PDF for $period',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Make a PDF with the numbers above, to keep or to share with '
+                  'someone you trust. It has counts only: no journal text, no '
+                  'reflections and no exercise answers.',
+                  style: muted.copyWith(height: 1.4),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.tonalIcon(
+                  icon: const Icon(Symbols.picture_as_pdf_rounded),
+                  label: const Text('Create PDF summary'),
+                  onPressed: () => widget.onExport!(_days),
+                ),
+              ],
+            ),
+          ),
         card(
           'Mood calendar',
           MoodCalendar(

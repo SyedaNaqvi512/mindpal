@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Check in with one tap. Shows no journal text.</string>
+    <string name="widget_title">MindPal</string>
+    <string name="widget_logo_description">MindPal logo</string>
+    <string name="widget_question">How are you feeling?</string>
+    <string name="widget_calm_line">A calm place to check in</string>
+    <string name="widget_write">Write</string>
+    <string name="widget_write_description">Write a new entry</string>
+    <string name="mood_1">Very low</string>
+    <string name="mood_2">Low</string>
+    <string name="mood_3">Okay</string>
+    <string name="mood_4">Good</string>
+    <string name="mood_5">Very good</string>
+    <plurals name="widget_days">
+        <item quantity="one">%d day of writing</item>
+        <item quantity="other">%d days of writing</item>
+    </plurals>
+</resources>

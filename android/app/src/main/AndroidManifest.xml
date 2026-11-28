@@ -1,6 +1,5 @@
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
@@ -8,7 +7,6 @@
     <application
         android:label="MindPal"
         android:allowBackup="false"
-        android:usesCleartextTraffic="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
@@ -35,6 +33,19 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Home-screen widget (Part 9b): mood buttons and a gentle writing-day count. -->
+        <receiver
+            android:name=".MindPalWidget"
+            android:exported="false"
+            android:label="MindPal">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mindpal_widget_info"/>
+        </receiver>
 
         <receiver
             android:exported="false"
