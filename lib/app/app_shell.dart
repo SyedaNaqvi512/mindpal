@@ -9,6 +9,7 @@ import '../features/insights/screens/insights_screen.dart';
 import '../features/journal/screens/history_screen.dart';
 import '../features/journal/screens/new_entry_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
+import '../features/widget/widget_bridge.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.onSignedOut});
@@ -19,8 +20,39 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
+  VoidCallback? _stopListening;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // A tap on the home-screen widget: while the app is open, and when it was
+    // opened by the tap.
+    _stopListening = WidgetBridge.instance.listen(_openFromWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openFromWidget());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopListening?.call();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _openFromWidget();
+  }
+
+  /// Opens a new entry if the widget asked for one: with the tapped mood
+  /// chosen (1 to 5), or blank (0).
+  Future<void> _openFromWidget() async {
+    final mood = await WidgetBridge.instance.takePending();
+    if (mood == null || !mounted) return;
+    _openNewEntry(mood: mood == 0 ? null : mood);
+  }
 
   void _openNewEntry({int? mood, String? text}) {
     Navigator.of(context).push(

@@ -6,11 +6,15 @@ import '../../../core/entries_changes.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/skeleton.dart';
+import '../../../core/widgets/toast.dart';
 import '../../exercises/services/exercise_repository.dart';
 import '../../journal/models/entry_format.dart';
 import '../../journal/models/mood.dart';
 import '../../journal/screens/entry_detail_screen.dart';
 import '../models/analytics_calc.dart';
+import '../models/report_data.dart';
+import '../services/pdf_font_loader.dart';
+import '../services/report_service.dart';
 import 'insights_view.dart';
 
 /// FR-27 mood calendar, FR-28 trends, FR-29 common patterns, and the Part 8
@@ -18,9 +22,12 @@ import 'insights_view.dart';
 /// exercises). Everything is worked out on the phone from the encrypted
 /// journal; nothing is sent anywhere.
 class InsightsScreen extends StatefulWidget {
-  const InsightsScreen({super.key, required this.onSignedOut});
+  const InsightsScreen({super.key, required this.onSignedOut, this.sharer});
 
   final VoidCallback onSignedOut;
+
+  /// How the PDF is handed over; tests pass a fake.
+  final ReportSharer? sharer;
 
   @override
   State<InsightsScreen> createState() => _InsightsScreenState();
@@ -67,6 +74,48 @@ class _InsightsScreenState extends State<InsightsScreen> {
       });
     } catch (_) {
       if (mounted) setState(() => _loaded = true);
+    }
+  }
+
+  Future<void> _export(int days) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share a summary?'),
+        content: const Text(
+          'This makes a PDF with counts only: your moods, feelings, exercises '
+          'and patterns. It has no journal text. You choose where it goes next, '
+          'and MindPal does not send it anywhere itself.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Create PDF'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final now = DateTime.now();
+      final data = buildReportData(
+        rows: _rows,
+        exercises: _exercises,
+        today: now,
+        days: days,
+      );
+      final fonts = await loadPdfFonts();
+      await (widget.sharer ?? const PhoneReportSharer())
+          .share(renderReportPdf(data, fonts: fonts), reportFileName(now));
+    } catch (_) {
+      if (mounted) {
+        Toast.of(context, 'Could not create the summary. Please try again.',
+            kind: ToastKind.error);
+      }
     }
   }
 
@@ -155,6 +204,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         rows: _rows,
         exercises: _exercises,
         onDayTap: _showDay,
+        onExport: _export,
       ),
     );
   }

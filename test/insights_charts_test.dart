@@ -214,6 +214,49 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the share card appears only when export is wired and reports the period',
+        (tester) async {
+      tall(tester);
+      var asked = -1;
+      Widget page({required bool wired}) => MaterialApp(
+            theme: AppTheme.build(AppPalette.skyMist),
+            home: Scaffold(
+              body: InsightsView(
+                rows: sample(),
+                exercises: exercises,
+                today: today,
+                onDayTap: (_) {},
+                onExport: wired ? (d) => asked = d : null,
+              ),
+            ),
+          );
+      await tester.pumpWidget(page(wired: false));
+      await tester.pumpAndSettle();
+      expect(find.text('Share a summary'), findsNothing);
+
+      await tester.pumpWidget(page(wired: true));
+      await tester.pumpAndSettle();
+      expect(find.text('Share a summary'), findsOneWidget);
+      await tester.tap(find.text('30 days'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create PDF summary'));
+      await tester.pump();
+      expect(asked, 30);
+    });
+
+    testWidgets('the gentle streak shows in the stats row', (tester) async {
+      tall(tester);
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.build(AppPalette.lavenderDream),
+        home: Scaffold(
+          body: InsightsView(rows: sample(), exercises: exercises, today: today, onDayTap: (_) {}),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('Days of writing'), findsOneWidget);
+      expect(find.textContaining('Day streak'), findsNothing);
+    });
+
     testWidgets('Reduce motion builds the whole page with no animation left', (tester) async {
       reduceMotionSetting.value = true;
       tall(tester);

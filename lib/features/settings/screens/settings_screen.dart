@@ -20,8 +20,11 @@ import '../../auth/services/auth_service.dart';
 import '../../consent/services/consent_service.dart';
 import '../../exercises/screens/exercise_progress_screen.dart';
 import '../../consent/widgets/consent_sheet.dart';
+import '../../insights/screens/pattern_tracker_screen.dart';
+import '../../learn/learn_screen.dart';
 import '../../reminders/widgets/reminder_settings_tile.dart';
 import '../../safety/support_info.dart';
+import '../../widget/widget_bridge.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key, required this.onSignedOut});
@@ -31,6 +34,7 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _signOut() async {
     ConsentService.instance.clear();
     ProfileStore.instance.clear();
+    await WidgetBridge.instance.clear();
     await AuthService.instance.logout();
     onSignedOut();
   }
@@ -198,6 +202,24 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const _SectionLabel('Learn'),
+          _NavTile(
+            icon: Symbols.menu_book_rounded,
+            title: 'Learn',
+            subtitle: 'Short reads on mindfulness, in English or Urdu, offline',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LearnScreen()),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _NavTile(
+            icon: Symbols.pattern_rounded,
+            title: 'Thinking patterns',
+            subtitle: 'See which patterns show up in your reflections',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PatternTrackerScreen()),
+            ),
+          ),
           const _SectionLabel('AI and privacy'),
           const _AiConsentTile(),
           const SizedBox(height: 8),
@@ -289,10 +311,16 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _NavTile extends StatelessWidget {
-  const _NavTile({required this.icon, required this.title, required this.onTap});
+  const _NavTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
 
   final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
 
   @override
@@ -301,6 +329,7 @@ class _NavTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon),
         title: Text(title),
+        subtitle: subtitle == null ? null : Text(subtitle!),
         trailing: const Icon(Symbols.chevron_right_rounded),
         onTap: onTap,
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mindpal/features/insights/models/analytics_calc.dart';
+import 'package:mindpal/features/insights/models/insights_calc.dart';
 
 Map<String, Object?> row(String at, int mood, {String? tags, String? pattern}) =>
     {'created_at': at, 'mood': mood, 'thinking_pattern': pattern, 'tags': tags};
@@ -189,6 +190,104 @@ void main() {
       ];
       expect(exercisesSince(all, DateTime(2026, 11, 14)).length, 1);
       expect(exercisesSince(all, null).length, 2);
+    });
+  });
+
+  group('gentle streak', () {
+    Map<DateTime, DayMood> days(List<int> agoList) => dailyMoods([
+          for (final a in agoList)
+            row(DateTime(2026, 11, 20 - a, 10).toIso8601String(), 3),
+        ]);
+
+    test('no entries: nothing yet, and a kind message', () {
+      final g = gentleStreak(const {}, today);
+      expect(g.days, 0);
+      expect(g.best, 0);
+      expect(gentleStreakMessage(g), contains('no pressure'));
+    });
+
+    test('days in a row count, and today is noted', () {
+      final g = gentleStreak(days([0, 1, 2]), today);
+      expect(g.days, 3);
+      expect(g.active, isTrue);
+      expect(g.wroteToday, isTrue);
+      expect(g.restDayUsed, isFalse);
+      expect(gentleStreakMessage(g), contains('3 days of writing'));
+    });
+
+    test('one rest day does not break the run', () {
+      final g = gentleStreak(days([0, 2, 3]), today);
+      expect(g.days, 3);
+      expect(g.restDayUsed, isTrue);
+      expect(gentleStreakMessage(g), contains('rest day'));
+    });
+
+    test('two missed days end the run, but a new one starts', () {
+      final g = gentleStreak(days([0, 3, 4, 5]), today);
+      expect(g.days, 1);
+      expect(g.best, 3);
+    });
+
+    test('yesterday still keeps it open, today is not a miss', () {
+      final g = gentleStreak(days([1, 2]), today);
+      expect(g.active, isTrue);
+      expect(g.wroteToday, isFalse);
+      expect(gentleStreakMessage(g), contains('Today is still open'));
+    });
+
+    test('a long break is a fresh start, never a failure', () {
+      final g = gentleStreak(days([6, 7, 8]), today);
+      expect(g.active, isFalse);
+      expect(g.days, 0);
+      expect(g.best, 3);
+      final m = gentleStreakMessage(g).toLowerCase();
+      expect(m, contains('welcome back'));
+      expect(m, isNot(contains('lost')));
+      expect(m, isNot(contains('broke')));
+      expect(m, isNot(contains('fail')));
+    });
+
+    test('future dates are ignored and one entry counts as one day', () {
+      final g = gentleStreak(days([-3, 0]), today);
+      expect(g.days, 1);
+      expect(gentleStreakMessage(g), contains('1 day of writing'));
+    });
+  });
+
+  group('pattern tracker maths', () {
+    final rows = [
+      row('2026-11-20T10:00:00', 3, pattern: 'catastrophizing'),
+      row('2026-11-18T10:00:00', 3, pattern: 'catastrophizing'),
+      row('2026-11-05T10:00:00', 3, pattern: 'catastrophizing'),
+      row('2026-11-19T10:00:00', 3, pattern: 'mind_reading'),
+      row('2026-11-19T11:00:00', 3, pattern: ''),
+      row('2026-11-19T12:00:00', 3),
+      row('2026-01-02T10:00:00', 3, pattern: 'labeling'), // too old for 8 weeks
+    ];
+
+    test('weekly counts put each reflection in its 7-day block', () {
+      final w = patternWeeklyCounts(rows, today, 8);
+      expect(w['catastrophizing']!.length, 8);
+      expect(w['catastrophizing']!.last, 2);
+      expect(w['catastrophizing']![5], 1); // 15 days ago: block 2 weeks back
+      expect(w['mind_reading']!.last, 1);
+      expect(w.containsKey('labeling'), isFalse);
+      expect(w.containsKey(''), isFalse);
+    });
+
+    test('last seen is the newest day', () {
+      final l = patternLastSeen(rows);
+      expect(l['catastrophizing'], DateTime(2026, 11, 20));
+      expect(l['labeling'], DateTime(2026, 1, 2));
+      expect(l.containsKey('batman'), isFalse);
+    });
+
+    test('agoText reads naturally', () {
+      expect(agoText(today, today), 'today');
+      expect(agoText(DateTime(2026, 11, 19), today), 'yesterday');
+      expect(agoText(DateTime(2026, 11, 17), today), '3 days ago');
+      expect(agoText(DateTime(2026, 11, 6), today), '2 weeks ago');
+      expect(agoText(DateTime(2026, 8, 1), today), '3 months ago');
     });
   });
 }

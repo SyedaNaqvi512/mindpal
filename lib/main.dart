@@ -11,6 +11,7 @@ import 'core/theme/theme_controller.dart';
 import 'features/applock/screens/app_lock_gate.dart';
 import 'features/applock/services/app_lock_service.dart';
 import 'features/auth/screens/auth_gate.dart';
+import 'features/learn/learn_language.dart';
 import 'features/reminders/services/reminder_service.dart';
 import 'core/widgets/responsive_frame.dart';
 
@@ -26,6 +27,7 @@ Future<void> main() async {
 
   final prefs = await SharedPreferences.getInstance();
   Motion.load(prefs);
+  loadLearnLanguage(prefs);
 
   // Load the saved app-lock configuration before showing the app.
   await AppLockService.instance.load();

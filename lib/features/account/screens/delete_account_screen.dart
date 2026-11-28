@@ -8,6 +8,7 @@ import '../../applock/services/app_lock_service.dart';
 import '../../auth/services/auth_service.dart';
 import '../../consent/services/consent_service.dart';
 import '../../reminders/services/reminder_service.dart';
+import '../../widget/widget_bridge.dart';
 
 /// FR-34: permanently delete the account and clear the data on this phone.
 class DeleteAccountScreen extends ConsumerStatefulWidget {
@@ -75,6 +76,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       }
 
       ConsentService.instance.clear();
+      await WidgetBridge.instance.clear();
       await AuthService.instance.logout();
 
       navigator.popUntil((r) => r.isFirst);
