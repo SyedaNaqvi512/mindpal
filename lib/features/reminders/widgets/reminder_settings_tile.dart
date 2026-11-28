@@ -4,7 +4,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../services/reminder_logic.dart';
 import '../services/reminder_service.dart';
 
-/// Settings card for FR-30: reminder on/off and the time of day.
+/// Settings for FR-30: the daily check-in reminder and the daily thought,
+/// each with an on/off switch and a time of day.
 class ReminderSettingsTile extends StatefulWidget {
   const ReminderSettingsTile({super.key});
 
@@ -36,17 +37,29 @@ class _ReminderSettingsTileState extends State<ReminderSettingsTile> {
     }
   }
 
-  Future<void> _pickTime() async {
+  Future<void> _toggleQuote(bool on) async {
+    final ok = await _svc.setQuoteEnabled(on);
+    if (!ok && mounted) {
+      _snack(
+        'Notifications are blocked. Allow them for MindPal in your '
+        'phone settings.',
+      );
+    }
+  }
+
+  Future<void> _pickTime({required bool quote}) async {
+    final current = quote ? _svc.quoteMinutes : _svc.minutes;
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay(
-        hour: hourOf(_svc.minutes),
-        minute: minuteOf(_svc.minutes),
-      ),
-      helpText: 'Daily reminder time',
+      initialTime: TimeOfDay(hour: hourOf(current), minute: minuteOf(current)),
+      helpText: quote ? 'Daily thought time' : 'Daily reminder time',
     );
-    if (picked != null) {
-      await _svc.setTime(toMinutes(picked.hour, picked.minute));
+    if (picked == null) return;
+    final m = toMinutes(picked.hour, picked.minute);
+    if (quote) {
+      await _svc.setQuoteTime(m);
+    } else {
+      await _svc.setTime(m);
     }
   }
 
@@ -55,30 +68,62 @@ class _ReminderSettingsTileState extends State<ReminderSettingsTile> {
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return ListenableBuilder(
       listenable: _svc,
-      builder: (context, _) => Card(
-        child: Column(
-          children: [
-            SwitchListTile(
-              secondary: const Icon(Symbols.notifications_rounded),
-              title: const Text('Daily reminder'),
-              subtitle: Text(
-                _svc.enabled
-                    ? 'A gentle nudge every day at ${formatMinutes(_svc.minutes)}.'
-                    : 'Off.',
-                style: TextStyle(color: muted),
-              ),
-              value: _svc.enabled,
-              onChanged: _toggle,
+      builder: (context, _) => Column(
+        children: [
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Symbols.notifications_rounded),
+                  title: const Text('Daily reminder'),
+                  subtitle: Text(
+                    _svc.enabled
+                        ? 'A gentle check-in every day at ${formatMinutes(_svc.minutes)}, '
+                            'in different words.'
+                        : 'Off.',
+                    style: TextStyle(color: muted),
+                  ),
+                  value: _svc.enabled,
+                  onChanged: _toggle,
+                ),
+                if (_svc.enabled)
+                  ListTile(
+                    leading: const Icon(Symbols.schedule_rounded),
+                    title: const Text('Reminder time'),
+                    trailing: Text(formatMinutes(_svc.minutes)),
+                    onTap: () => _pickTime(quote: false),
+                  ),
+              ],
             ),
-            if (_svc.enabled)
-              ListTile(
-                leading: const Icon(Symbols.schedule_rounded),
-                title: const Text('Reminder time'),
-                trailing: Text(formatMinutes(_svc.minutes)),
-                onTap: _pickTime,
-              ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Symbols.self_improvement_rounded),
+                  title: const Text('Daily thought'),
+                  subtitle: Text(
+                    _svc.quoteEnabled
+                        ? 'A new calming thought about the mind every day at '
+                            '${formatMinutes(_svc.quoteMinutes)}.'
+                        : 'Off. A short, calming thought each day.',
+                    style: TextStyle(color: muted),
+                  ),
+                  value: _svc.quoteEnabled,
+                  onChanged: _toggleQuote,
+                ),
+                if (_svc.quoteEnabled)
+                  ListTile(
+                    leading: const Icon(Symbols.schedule_rounded),
+                    title: const Text('Thought time'),
+                    trailing: Text(formatMinutes(_svc.quoteMinutes)),
+                    onTap: () => _pickTime(quote: true),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
